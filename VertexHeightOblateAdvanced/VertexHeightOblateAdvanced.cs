@@ -27,23 +27,39 @@ namespace VertexHeightOblateAdvanced
             set { Mod.mode = value.Value; }
         }
 
-        // Angular velocity as a fraction of breakup angular velocity
-        [ParserTarget("criticality")]
-        public NumericParser<Double> Criticality
+        // Mass of the body
+        [ParserTarget("mass")]
+        public NumericParser<Double> Mass
         {
-            get { return Mod.criticality; }
-            set { Mod.criticality = value; }
+            get { return Mod.mass; }
+            set { Mod.mass = value; }
+        }
+
+        // Reference radius of the body
+        [ParserTarget("radius")]
+        public NumericParser<Double> Radius
+        {
+            get { return Mod.radius; }
+            set { Mod.radius = value; }
+        }
+
+        // Reference surface gravity of the body
+        [ParserTarget("geeASL")]
+        public NumericParser<Double> GeeASL
+        {
+            get { return Mod.geeASL; }
+            set { Mod.geeASL = value; }
         }
 
         // Rotational period of the body
-        /*[ParserTarget("period")]
+        [ParserTarget("period")]
         public NumericParser<Double> Period
         {
             get { return Mod.period; }
             set { Mod.period = value; }
-        }*/
+        }
 
-        // Primary equatorial axis as ratio of nominal body radius
+        // Primary equatorial axis as ratio of reference radius
         [ParserTarget("a")]
         public NumericParser<Double> A
         {
@@ -51,7 +67,7 @@ namespace VertexHeightOblateAdvanced
             set { Mod.a = value; }
         }
 
-        // Secondary equatorial axis as ratio of nominal body radius
+        // Secondary equatorial axis as ratio of reference radius
         [ParserTarget("b")]
         public NumericParser<Double> B
         {
@@ -59,7 +75,7 @@ namespace VertexHeightOblateAdvanced
             set { Mod.b = value; }
         }
 
-        // Polar axis as ratio of nominal body radius
+        // Polar axis as ratio of reference radius
         [ParserTarget("c")]
         public NumericParser<Double> C
         {

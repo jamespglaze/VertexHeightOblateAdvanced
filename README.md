@@ -43,7 +43,26 @@ VertexHeightOblateAdvanced is a custom PQS Mod intended for use by planet modder
   * Value: (1 to infinity)
 
 ## Examples
-* 
+* PointEqupotential
+ 
+  ![PointEquipotential](ExampleImages/PointEquipotential.png)
+  ![PointEquipotential](ExampleImages/PointEquipotentialScreenshot.png)
+* UniformEquipotential Low
+
+  ![UniformEquipotentialLow1](ExampleImages/UniformEquipotentialLow1.png)
+  ![UniformEquipotentialLow1](ExampleImages/UniformEquipotentialLow1Screenshot.png)
+* UniformEquipotential Low
+
+  ![UniformEquipotentialLow2](ExampleImages/UniformEquipotentialLow2.png)
+  ![UniformEquipotentialLow2](ExampleImages/UniformEquipotentialLow2Screenshot.png)
+* UniformEquipotential High
+
+  ![UniformEquipotentialHigh1](ExampleImages/UniformEquipotentialHigh1.png)
+  ![UniformEquipotentialHigh1](ExampleImages/UniformEquipotentialHigh1Screenshot.png)
+* UniformEquipotential High
+
+  ![UniformEquipotentialHigh2](ExampleImages/UniformEquipotentialHigh2.png)
+  ![UniformEquipotentialHigh2](ExampleImages/UniformEquipotentialHigh2Screenshot.png)
 
 ## Requirements
 * [ModuleManager](https://forum.kerbalspaceprogram.com/index.php?/topic/50533-18x-112x-module-manager-422-june-18th-2022-the-heatwave-edition/)

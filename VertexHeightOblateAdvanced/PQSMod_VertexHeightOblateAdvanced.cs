@@ -177,13 +177,18 @@ namespace VertexHeightOblateAdvanced
 
         private void PrecalculateValues()
         {
+            // Clamp a, b, and c to one or greater
+            a = a < 1 ? 1 : a;
+            b = b < 1 ? 1 : b;
+            c = c < 1 ? 1 : c;
+
             // Precompute squares of each axis
             aSqr = Math.Pow(a, 2);
             bSqr = Math.Pow(b, 2);
             cSqr = Math.Pow(c, 2);
 
             //Short circuit if not enough values provided in config
-            if ((radius == 0.0f ? 1 : 0) + (mass == 0.0f ? 1 : 0) + (geeASL == 0.0f ? 1 : 0) > 1 || period == 0.0f)
+            if ((radius <= 0.0f ? 1 : 0) + (mass <= 0.0f ? 1 : 0) + (geeASL <= 0.0f ? 1 : 0) > 1 || period <= 0.0f)
             {
                 return;
             }

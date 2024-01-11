@@ -16,15 +16,24 @@ namespace VertexHeightOblateAdvanced
     {
         // What oblate mode to use for this mod
         // PointEquipotential: Follow gravitational equipotential of a rotating point mass
+        // UniformEquipotential: Either Maclaurin (2-Axis oblate spheroid solution) or Jacobi (3-Axis ellipsoid solution)
         // Blend: PointEquipotential multiplied by CustomEllipsoid
-        // Maclaurin: 2-Axis oblate spheroid solution for gravitational equipotential of rotating body of uniform density
-        // Jacobi: 3-Axis ellipsoid solution for gravitational equipotential of rotating body of uniform density
         // CustomEllipsoid: Generate ellipsoid from provided 3 axis a, b, c
-        [ParserTarget("mode")]
-        public EnumParser<OblateModes> Mode
+        [ParserTarget("oblateMode")]
+        public EnumParser<OblateModes> OblateMode
         {
-            get { return Mod.mode; }
-            set { Mod.mode = value.Value; }
+            get { return Mod.oblateMode; }
+            set { Mod.oblateMode = value.Value; }
+        }
+
+        // Energy level of the body, needed because there is more than one possible oblate value for many periods
+        // Low: MacLaurin up to a polar to equatorial ratio of 1.42
+        // High: MacLaurin between polar to equatorial ratios of 1.42 to 1.716, Jacobian between polar to major equatorial ratios of 1.716 to 2.850
+        [ParserTarget("energyMode")]
+        public EnumParser<EnergyModes> EnergyMode
+        {
+            get { return Mod.energyMode; }
+            set { Mod.energyMode = value.Value; }
         }
 
         // Mass of the body

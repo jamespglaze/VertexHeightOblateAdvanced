@@ -14,13 +14,19 @@ namespace VertexHeightOblateAdvanced
         public enum OblateModes
         {
             PointEquipotential,
+            UniformEquipotential,
             Blend,
-            Maclaurin,
-            Jacobian,
             CustomEllipsoid,
         }
+        public enum EnergyModes
+        {
+            Low,
+            High,
+        }
 
-        public OblateModes mode = OblateModes.PointEquipotential;
+        public OblateModes oblateMode = OblateModes.PointEquipotential;
+        public EnergyModes energyMode = EnergyModes.Low;
+
         public double mass = 0.0f;
         public double radius = 0.0f;
         public double geeASL = 0.0f;
@@ -35,7 +41,7 @@ namespace VertexHeightOblateAdvanced
         private double bSqr = 1.0f;
         private double cSqr = 1.0f;
 
-        private static double[][] maclaurinAscendingLookup =
+        private static double[][] lowEnergyLookup =
         {
             new double[] { 132859427, 1.00001, 1.00001 },
             new double[] { 74739908, 1.0000316, 1.0000316 },
@@ -86,41 +92,7 @@ namespace VertexHeightOblateAdvanced
             new double[] { 817921, 1.41, 1.41 },
             new double[] { 811995, 1.42, 1.42 },
         };
-        private static double[][] maclaurinDescendingLookup =
-        {
-            new double[] { 709304, 1.72, 1.72 },
-            new double[] { 710537, 1.71, 1.71 },
-            new double[] { 712615, 1.70, 1.70 },
-            new double[] { 714760, 1.69, 1.69 },
-            new double[] { 716973, 1.68, 1.68 },
-            new double[] { 719257, 1.67, 1.67 },
-            new double[] { 721616, 1.66, 1.66 },
-            new double[] { 724052, 1.65, 1.65 },
-            new double[] { 726568, 1.64, 1.64 },
-            new double[] { 729168, 1.63, 1.63 },
-            new double[] { 731855, 1.62, 1.62 },
-            new double[] { 734633, 1.61, 1.61 },
-            new double[] { 737506, 1.60, 1.60 },
-            new double[] { 740479, 1.59, 1.59 },
-            new double[] { 743555, 1.58, 1.58 },
-            new double[] { 746740, 1.57, 1.57 },
-            new double[] { 750039, 1.56, 1.56 },
-            new double[] { 753456, 1.55, 1.55 },
-            new double[] { 756999, 1.54, 1.54 },
-            new double[] { 760672, 1.53, 1.53 },
-            new double[] { 764483, 1.52, 1.52 },
-            new double[] { 768439, 1.51, 1.51 },
-            new double[] { 772546, 1.50, 1.50 },
-            new double[] { 776814, 1.49, 1.49 },
-            new double[] { 781251, 1.48, 1.48 },
-            new double[] { 785866, 1.47, 1.47 },
-            new double[] { 790669, 1.46, 1.46 },
-            new double[] { 795671, 1.45, 1.45 },
-            new double[] { 800885, 1.44, 1.44 },
-            new double[] { 806321, 1.43, 1.43 },
-            new double[] { 811995, 1.42, 1.42 },
-        };
-        private static double[][] jacobianLookup =
+        private static double[][] highEnergyLookup =
         {
             new double[] { 813345, 2.89, 1.253 },
             new double[] { 810913, 2.87, 1.256 },
@@ -170,96 +142,118 @@ namespace VertexHeightOblateAdvanced
             new double[] { 712570, 1.86, 1.596 },
             new double[] { 710533, 1.80, 1.638 },
             new double[] { 709305, 1.72, 1.716 },
+            new double[] { 709304, 1.72, 1.72 },
+            new double[] { 710537, 1.71, 1.71 },
+            new double[] { 712615, 1.70, 1.70 },
+            new double[] { 714760, 1.69, 1.69 },
+            new double[] { 716973, 1.68, 1.68 },
+            new double[] { 719257, 1.67, 1.67 },
+            new double[] { 721616, 1.66, 1.66 },
+            new double[] { 724052, 1.65, 1.65 },
+            new double[] { 726568, 1.64, 1.64 },
+            new double[] { 729168, 1.63, 1.63 },
+            new double[] { 731855, 1.62, 1.62 },
+            new double[] { 734633, 1.61, 1.61 },
+            new double[] { 737506, 1.60, 1.60 },
+            new double[] { 740479, 1.59, 1.59 },
+            new double[] { 743555, 1.58, 1.58 },
+            new double[] { 746740, 1.57, 1.57 },
+            new double[] { 750039, 1.56, 1.56 },
+            new double[] { 753456, 1.55, 1.55 },
+            new double[] { 756999, 1.54, 1.54 },
+            new double[] { 760672, 1.53, 1.53 },
+            new double[] { 764483, 1.52, 1.52 },
+            new double[] { 768439, 1.51, 1.51 },
+            new double[] { 772546, 1.50, 1.50 },
+            new double[] { 776814, 1.49, 1.49 },
+            new double[] { 781251, 1.48, 1.48 },
+            new double[] { 785866, 1.47, 1.47 },
+            new double[] { 790669, 1.46, 1.46 },
+            new double[] { 795671, 1.45, 1.45 },
+            new double[] { 800885, 1.44, 1.44 },
+            new double[] { 806321, 1.43, 1.43 },
+            new double[] { 811995, 1.42, 1.42 },
         };
 
         private void PrecalculateValues()
         {
-            // Clamp criticality to the interval [0,1]
-            if (criticality < 0.0f)
-            {
-                criticality = 0.0f;
-            }
-            if (criticality > 1.0f)
-            {
-                criticality = 1.0f;
-            }
             // Precompute squares of each axis
             aSqr = Math.Pow(a, 2);
             bSqr = Math.Pow(b, 2);
             cSqr = Math.Pow(c, 2);
 
-            switch (mode)
+            if ((radius == 0.0f ? 1 : 0) + (mass == 0.0f ? 1 : 0) + (geeASL == 0.0f ? 1 : 0) > 1 || period == 0.0f)
+            {
+                return;
+            }
+            mass = mass == 0.0f ? Math.Pow(radius, 2) * geeASL * PhysicsGlobals.GravitationalAcceleration / G : mass;
+            radius = radius == 0.0f ? Math.Sqrt(G * mass * geeASL * PhysicsGlobals.GravitationalAcceleration) : radius;
+
+            Debug.Log(oblateMode.ToString());
+            switch (oblateMode)
             {
 
                 case OblateModes.PointEquipotential:
+                    PrecalculateShapePointEquipotential();
+                    break;
+                case OblateModes.UniformEquipotential:
+                    if (energyMode == EnergyModes.Low)
+                        PrecalculateShapeEllipsoid(lowEnergyLookup);
+                    if (energyMode == EnergyModes.High)
+                        PrecalculateShapeEllipsoid(highEnergyLookup);
                     break;
                 case OblateModes.Blend:
-                    break;
-                case OblateModes.Maclaurin:
-                    PrecalculateShapeEllipsoid(maclaurinAscendingLookup);
-                    break;
-                case OblateModes.Jacobian:
-                    PrecalculateShapeEllipsoid(jacobianLookup);
                     break;
                 case OblateModes.CustomEllipsoid:
                     break;
                 default:
-                    break; ;
+                    break;
             }
         }
 
         private void PrecalculateShapePointEquipotential()
         {
-            if ((radius == 0.0f ? 1 : 0) + (mass == 0.0f ? 1 : 0) + (geeASL == 0.0f ? 1 : 0) > 1 || period == 0.0f)
-            {
-                return;
-            }
-            mass = mass == 0.0f ? Math.Pow(radius, 2) * geeASL / G : mass;
-            radius = radius == 0.0f ? Math.Sqrt(G * mass * geeASL) : radius;
-
             double angularVelocity = 1 / (2 * Math.PI * period);
-            double criticalAngularVelocity = Math.Sqrt((2 / 3) * (G * mass)/radius);
-            criticality = angularVelocity/criticalAngularVelocity;
+            double criticalAngularVelocity = Math.Sqrt((2 / 3) * (G * mass) / radius);
+            criticality = angularVelocity / criticalAngularVelocity;
+            // Clamp criticality to the interval [0,1]
+            criticality = criticality < 0.0f ? 0.0f
+                : criticality > 1.0f ? 1.0f
+                : criticality;
         }
 
-        private void PrecalculateShapeEllipsoid(double[][] lookup, bool searchForward = true)
+        private void PrecalculateShapeEllipsoid(double[][] lookup)
         {
-            if ((radius == 0.0f ? 1 : 0) + (mass == 0.0f ? 1 : 0) + (geeASL == 0.0f ? 1 : 0) > 1 || period == 0.0f)
-            {
-                return;
-            }
-            mass = mass == 0.0f ? Math.Pow(radius, 2) * geeASL / G : mass;
-            radius = radius == 0.0f ? Math.Sqrt(G * mass * geeASL) : radius;
-            double density = 10.625 * mass / (Math.Pow(radius, 3) * Math.PI * 4 / 3);
+            double density = mass / (Math.Pow(radius, 3) * Math.PI * 4 / 3);
             Debug.Log(lookup.Length.ToString());
             Debug.Log("Starting density is: " + density.ToString());
             {
                 for (int i = 0; i < lookup.Length; i++)
                 {
                     Debug.Log(i.ToString());
-                    Debug.Log(searchForward.ToString());
                     Debug.Log(lookup[i][0].ToString());
                     Debug.Log((period * Math.Sqrt(density / (lookup[i][1] * lookup[i][2]))).ToString());
                     if (i == lookup.Length - 1)
                     {
+                        // Period is shorter than shortest possible period, clamp to values for shortest period
                         a = lookup[i][1];
                         b = lookup[i][2];
                         break;
                     }
-                    if ((searchForward && lookup[i][0] / Math.Sqrt(density / (lookup[i][1] * lookup[i][2])) < period) || (!searchForward && lookup[i][0] / Math.Sqrt(density / (lookup[i][1] * lookup[i][2])) > period))
+                    if (lookup[i][0] / Math.Sqrt(density / (lookup[i][1] * lookup[i][2])) < period)
                     {
                         if (i == 0)
                         {
                             break;
                         }
-                        double interval = (period * Math.Sqrt(density / (lookup[i][1] * lookup[i][2])) - lookup[i][0]) / (lookup[i + 1][0] - lookup[i][0]);
+                        double interval = (period * Math.Sqrt(density / (lookup[i][1] * lookup[i][2])) - lookup[i][0]) / (lookup[i - 1][0] - lookup[i][0]);
                         Debug.Log(interval.ToString());
                         Debug.Log(lookup[i + 1][1].ToString());
                         Debug.Log(lookup[i + 1][2].ToString());
                         Debug.Log(lookup[i][1].ToString());
                         Debug.Log(lookup[i][2].ToString());
-                        a = lookup[i][1] + interval * (lookup[i + 1][1] - lookup[i][1]);
-                        b = lookup[i][2] + interval * (lookup[i + 1][2] - lookup[i][2]);
+                        a = lookup[i][1] + interval * (lookup[i - 1][1] - lookup[i][1]);
+                        b = lookup[i][2] + interval * (lookup[i - 1][2] - lookup[i][2]);
                         Debug.Log(a.ToString());
                         Debug.Log(b.ToString());
                         break;
@@ -316,14 +310,13 @@ namespace VertexHeightOblateAdvanced
             double phi = 2 * Math.PI * u;
             double theta = Math.PI * v;
 
-            switch (mode)
+            switch (oblateMode)
             {
                 case OblateModes.PointEquipotential:
                     return vertHeight * CalculateDeformityPointEquipotential(theta);
                 case OblateModes.Blend:
                     return vertHeight * CalculateDeformityPointEquipotential(theta) * CalculateDeformityEllipsoid(phi, theta);
-                case OblateModes.Maclaurin:
-                case OblateModes.Jacobian:
+                case OblateModes.UniformEquipotential:
                 case OblateModes.CustomEllipsoid:
                     return vertHeight * CalculateDeformityEllipsoid(phi, theta);
                 default:

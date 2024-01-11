@@ -35,7 +35,7 @@ namespace VertexHeightOblateAdvanced
         public double b = 1.0f;
         public double c = 1.0f;
 
-        private double G = 6.67430E-011;
+        const double G = 6.67430E-011;
         private double criticality = 0.0f;
         private double aSqr = 1.0f;
         private double bSqr = 1.0f;
@@ -182,17 +182,19 @@ namespace VertexHeightOblateAdvanced
             bSqr = Math.Pow(b, 2);
             cSqr = Math.Pow(c, 2);
 
+            //Short circuit if not enough values provided in config
             if ((radius == 0.0f ? 1 : 0) + (mass == 0.0f ? 1 : 0) + (geeASL == 0.0f ? 1 : 0) > 1 || period == 0.0f)
             {
                 return;
             }
+
+            // Set mass if geeASL and radius given
             mass = mass == 0.0f ? Math.Pow(radius, 2) * geeASL * PhysicsGlobals.GravitationalAcceleration / G : mass;
+            // Set radius if mass and geeASL given
             radius = radius == 0.0f ? Math.Sqrt(G * mass * geeASL * PhysicsGlobals.GravitationalAcceleration) : radius;
 
-            Debug.Log(oblateMode.ToString());
             switch (oblateMode)
             {
-
                 case OblateModes.PointEquipotential:
                     PrecalculateShapePointEquipotential();
                     break;
@@ -203,6 +205,7 @@ namespace VertexHeightOblateAdvanced
                         PrecalculateShapeEllipsoid(highEnergyLookup);
                     break;
                 case OblateModes.Blend:
+                    PrecalculateShapePointEquipotential();
                     break;
                 case OblateModes.CustomEllipsoid:
                     break;
@@ -213,8 +216,8 @@ namespace VertexHeightOblateAdvanced
 
         private void PrecalculateShapePointEquipotential()
         {
-            double angularVelocity = 1 / (2 * Math.PI * period);
-            double criticalAngularVelocity = Math.Sqrt((2 / 3) * (G * mass) / radius);
+            double angularVelocity = 2.0 * Math.PI / period;
+            double criticalAngularVelocity = Math.Sqrt(G * mass / (1.5f * radius)) / (1.5f * radius);
             criticality = angularVelocity / criticalAngularVelocity;
             // Clamp criticality to the interval [0,1]
             criticality = criticality < 0.0f ? 0.0f
@@ -225,19 +228,15 @@ namespace VertexHeightOblateAdvanced
         private void PrecalculateShapeEllipsoid(double[][] lookup)
         {
             double density = mass / (Math.Pow(radius, 3) * Math.PI * 4 / 3);
-            Debug.Log(lookup.Length.ToString());
-            Debug.Log("Starting density is: " + density.ToString());
             {
                 for (int i = 0; i < lookup.Length; i++)
                 {
-                    Debug.Log(i.ToString());
-                    Debug.Log(lookup[i][0].ToString());
-                    Debug.Log((period * Math.Sqrt(density / (lookup[i][1] * lookup[i][2]))).ToString());
                     if (i == lookup.Length - 1)
                     {
                         // Period is shorter than shortest possible period, clamp to values for shortest period
                         a = lookup[i][1];
                         b = lookup[i][2];
+                        c = 1;
                         break;
                     }
                     if (lookup[i][0] / Math.Sqrt(density / (lookup[i][1] * lookup[i][2])) < period)
@@ -247,21 +246,14 @@ namespace VertexHeightOblateAdvanced
                             break;
                         }
                         double interval = (period * Math.Sqrt(density / (lookup[i][1] * lookup[i][2])) - lookup[i][0]) / (lookup[i - 1][0] - lookup[i][0]);
-                        Debug.Log(interval.ToString());
-                        Debug.Log(lookup[i + 1][1].ToString());
-                        Debug.Log(lookup[i + 1][2].ToString());
-                        Debug.Log(lookup[i][1].ToString());
-                        Debug.Log(lookup[i][2].ToString());
                         a = lookup[i][1] + interval * (lookup[i - 1][1] - lookup[i][1]);
                         b = lookup[i][2] + interval * (lookup[i - 1][2] - lookup[i][2]);
-                        Debug.Log(a.ToString());
-                        Debug.Log(b.ToString());
+                        c = 1;
                         break;
                     }
                 }
                 aSqr = Math.Pow(a, 2);
                 bSqr = Math.Pow(b, 2);
-                Debug.Log("Current density is: " + (density / (a * b)).ToString());
             }
         }
 

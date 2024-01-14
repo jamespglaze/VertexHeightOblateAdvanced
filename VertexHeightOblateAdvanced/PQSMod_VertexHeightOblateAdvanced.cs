@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Kopernicus.Configuration.Parsing;
 using UnityEngine;
 using UnityEngine.Rendering;
+using static VertexHeightOblateAdvanced.PQSMod_VertexHeightOblateAdvanced;
 
 namespace VertexHeightOblateAdvanced
 {
@@ -17,6 +18,7 @@ namespace VertexHeightOblateAdvanced
             UniformEquipotential,
             Blend,
             CustomEllipsoid,
+            ContactBinary,
         }
         public enum EnergyModes
         {
@@ -34,12 +36,18 @@ namespace VertexHeightOblateAdvanced
         public double a = 1.0f;
         public double b = 1.0f;
         public double c = 1.0f;
+        public double primaryRadius = 1.0f;
+        public double secondaryRadius = 1.0f;
 
         const double G = 6.67430E-011;
         private double criticality = 0.0f;
         private double aSqr = 1.0f;
         private double bSqr = 1.0f;
         private double cSqr = 1.0f;
+        private double primarySlope = 0.0f;
+        private double secondarySlope = 0.0f;
+        private double primarySlopeXLimit = 0.0f;
+        private double secondarySlopeXLimit = 0.0f;
 
         private static double[][] lowEnergyLookup =
         {
@@ -177,15 +185,17 @@ namespace VertexHeightOblateAdvanced
 
         private void PrecalculateValues()
         {
-            // Clamp a, b, and c to one or greater
-            a = a < 1 ? 1 : a;
-            b = b < 1 ? 1 : b;
-            c = c < 1 ? 1 : c;
-
-            // Precompute squares of each axis
-            aSqr = Math.Pow(a, 2);
-            bSqr = Math.Pow(b, 2);
-            cSqr = Math.Pow(c, 2);
+            switch (oblateMode)
+            {
+                case OblateModes.CustomEllipsoid:
+                    PrecalculateShapeEllipsoid();
+                    break;
+                case OblateModes.ContactBinary:
+                    PrecalculateShapeContatBinary();
+                    break;
+                default:
+                    break;
+            }
 
             //Short circuit if not enough values provided in config
             if ((radius <= 0.0f ? 1 : 0) + (mass <= 0.0f ? 1 : 0) + (geeASL <= 0.0f ? 1 : 0) > 1 || period <= 0.0f)
@@ -205,18 +215,17 @@ namespace VertexHeightOblateAdvanced
                     break;
                 case OblateModes.UniformEquipotential:
                     if (energyMode == EnergyModes.Low)
-                        PrecalculateShapeEllipsoid(lowEnergyLookup);
+                        PrecalculateShapeUniformEquipotential(lowEnergyLookup);
                     if (energyMode == EnergyModes.High)
-                        PrecalculateShapeEllipsoid(highEnergyLookup);
+                        PrecalculateShapeUniformEquipotential(highEnergyLookup);
                     break;
                 case OblateModes.Blend:
                     PrecalculateShapePointEquipotential();
                     break;
-                case OblateModes.CustomEllipsoid:
-                    break;
                 default:
                     break;
             }
+            PrecalculateShapeEllipsoid();
         }
 
         private void PrecalculateShapePointEquipotential()
@@ -230,7 +239,7 @@ namespace VertexHeightOblateAdvanced
                 : criticality;
         }
 
-        private void PrecalculateShapeEllipsoid(double[][] lookup)
+        private void PrecalculateShapeUniformEquipotential(double[][] lookup)
         {
             double density = mass / (Math.Pow(radius, 3) * Math.PI * 4 / 3);
             {
@@ -260,6 +269,43 @@ namespace VertexHeightOblateAdvanced
                 aSqr = Math.Pow(a, 2);
                 bSqr = Math.Pow(b, 2);
             }
+        }
+        private void PrecalculateShapeEllipsoid()
+        {
+            // Clamp a, b, and c to one or greater
+            a = a < 1 ? 1 : a;
+            b = b < 1 ? 1 : b;
+            c = c < 1 ? 1 : c;
+
+            // Precompute squares of each axis
+            aSqr = Math.Pow(a, 2);
+            bSqr = Math.Pow(b, 2);
+            cSqr = Math.Pow(c, 2);
+        }
+
+        private void PrecalculateShapeContatBinary()
+        {
+            Debug.Log("PrecalculateShapeContatBinary: Running");
+            // Clamp primaryRadius to the interval [1,2]
+            primaryRadius = primaryRadius < 1.0f ? 1.0f
+                : primaryRadius > 2.0f ? 2.0f
+                : primaryRadius;
+            Debug.Log("primaryRadius: " + primaryRadius.ToString());
+            // Clamp secondaryRadius to the interval [1,primaryRadius]
+            secondaryRadius = secondaryRadius < 1.0f ? 1.0f
+                : secondaryRadius > primaryRadius ? primaryRadius
+                : secondaryRadius;
+            Debug.Log("secondaryRadius: " + secondaryRadius.ToString());
+
+            primarySlope = Math.Pow(primaryRadius, 2) - 1;
+            secondarySlope = Math.Pow(secondaryRadius, 2) - 1;
+            Debug.Log("primarySlope: " + primarySlope.ToString());
+            Debug.Log("secondarySlope: " + secondarySlope.ToString());
+
+            primarySlopeXLimit = primaryRadius / (1 + primarySlope);
+            secondarySlopeXLimit = -secondaryRadius / (1 + secondarySlope);
+            Debug.Log("primarySlopeXLimit: " + primarySlopeXLimit.ToString());
+            Debug.Log("secondarySlopeXLimit: " + secondarySlopeXLimit.ToString());
         }
 
         private double CalculateDeformityPointEquipotential(double theta)
@@ -302,6 +348,40 @@ namespace VertexHeightOblateAdvanced
             }
         }
 
+        private double CalculateDeformityContactBinary(double phi, double theta)
+        {
+            try
+            {
+                double denominator = 1.0f;
+                double xValue = 0.0f;
+                if ((-Math.PI / 2 < phi && phi < Math.PI / 2) || (Math.PI * 1.5f < phi && phi < Math.PI * 2f))
+                {
+                    denominator = 1 - ((1 + primarySlope) * Math.Pow(Math.Sin(theta) * Math.Cos(phi), 2));
+                    xValue = Math.Sin(theta) * Math.Cos(phi) / Math.Sqrt(denominator);
+                    if (xValue < primarySlopeXLimit)
+                    {
+                        return Math.Sqrt(1 / denominator);
+                    }
+                    return 2 * primaryRadius * Math.Sin(theta) * Math.Cos(phi);
+                }
+                if ((Math.PI / 2 < phi && phi < Math.PI * 1.5f) || (-Math.PI < phi && phi < -Math.PI / 2))
+                {
+                    denominator = 1 - ((1 + secondarySlope) * Math.Pow(Math.Sin(theta) * Math.Cos(phi), 2));
+                    xValue = Math.Sin(theta) * Math.Cos(phi) / Math.Sqrt(denominator);
+                    if (xValue > secondarySlopeXLimit)
+                    {
+                        return Math.Sqrt(1 / denominator);
+                    }
+                    return -2 * secondaryRadius * Math.Sin(theta) * Math.Cos(phi);
+                }
+                return 1;
+            }
+            catch (Exception e)
+            {
+                return 1;
+            }
+        }
+
         private double CalculateDeformity(double vertHeight, double u, double v)
         {
             double phi = 2 * Math.PI * u;
@@ -316,6 +396,8 @@ namespace VertexHeightOblateAdvanced
                 case OblateModes.UniformEquipotential:
                 case OblateModes.CustomEllipsoid:
                     return vertHeight * CalculateDeformityEllipsoid(phi, theta);
+                case OblateModes.ContactBinary:
+                    return vertHeight * CalculateDeformityContactBinary(phi, theta);
                 default:
                     return vertHeight;
             }

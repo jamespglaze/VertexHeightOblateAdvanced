@@ -19,6 +19,7 @@ namespace VertexHeightOblateAdvanced
         // UniformEquipotential: Either Maclaurin (2-Axis oblate spheroid solution) or Jacobi (3-Axis ellipsoid solution)
         // Blend: PointEquipotential multiplied by CustomEllipsoid
         // CustomEllipsoid: Generate ellipsoid from provided 3 axis a, b, c
+        // ContactBinary: God has abandoned us
         [ParserTarget("oblateMode")]
         public EnumParser<OblateModes> OblateMode
         {
@@ -90,6 +91,22 @@ namespace VertexHeightOblateAdvanced
         {
             get { return Mod.c; }
             set { Mod.c = value; }
+        }
+
+        // Polar axis as ratio of reference radius
+        [ParserTarget("primaryRadius")]
+        public NumericParser<Double> PrimaryRadius
+        {
+            get { return Mod.primaryRadius; }
+            set { Mod.primaryRadius = value; }
+        }
+
+        // Polar axis as ratio of reference radius
+        [ParserTarget("secondaryRadius")]
+        public NumericParser<Double> SecondaryRadius
+        {
+            get { return Mod.secondaryRadius; }
+            set { Mod.secondaryRadius = value; }
         }
     }
 }

@@ -93,7 +93,7 @@ namespace VertexHeightOblateAdvanced
             set { Mod.c = value; }
         }
 
-        // Polar axis as ratio of reference radius
+        // Radius of larger body as a ratio of neck radius
         [ParserTarget("primaryRadius")]
         public NumericParser<Double> PrimaryRadius
         {
@@ -101,7 +101,7 @@ namespace VertexHeightOblateAdvanced
             set { Mod.primaryRadius = value; }
         }
 
-        // Polar axis as ratio of reference radius
+        // Radius of smaller body as a ratio of neck radius
         [ParserTarget("secondaryRadius")]
         public NumericParser<Double> SecondaryRadius
         {

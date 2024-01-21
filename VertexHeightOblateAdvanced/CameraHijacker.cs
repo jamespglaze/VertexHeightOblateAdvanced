@@ -69,8 +69,6 @@ namespace VertexHeightOblateAdvanced
     {
         private static bool Prefix(FlightCamera __instance, ref FlightCamera.Modes m, ref ScreenMessage ___cameraModeReadout, ref Quaternion ___frameOfReference, ref Quaternion ___lastFoR, ref float ___FoRlerp, ref float ___offsetHdg, ref float ___offsetPitch)
         {
-            Debug.Log("m is: " + m.ToString());
-            Debug.Log("__instance.mode is: " + __instance.mode.ToString());
             PQSMod_VertexHeightOblateAdvanced currentMainBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(FlightGlobals.currentMainBody.pqsController);
             if (currentMainBodyOblateMod != null && (m == FlightCamera.Modes.FREE || m == FlightCamera.Modes.ORBITAL || m == FlightCamera.Modes.CHASE) && __instance.mode == FlightCamera.Modes.FREE)
             {

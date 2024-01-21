@@ -56,7 +56,7 @@ namespace VertexHeightOblateAdvanced
                     (a, b, c, aSqr, bSqr, cSqr) = DuckMathUtils.PrecalculateConstantsEllipsoid(a, b, c);
                     break;
                 case OblateModes.ContactBinary:
-                    (primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit) = DuckMathUtils.PrecalculateConstantsContactBinary(primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
+                    (primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit) = DuckMathUtils.PrecalculateConstantsContactBinary(primaryRadius, secondaryRadius);
                     break;
                 default:
                     break;
@@ -80,9 +80,9 @@ namespace VertexHeightOblateAdvanced
                     break;
                 case OblateModes.UniformEquipotential:
                     if (energyMode == EnergyModes.Low)
-                        (a, b, c, aSqr, bSqr, cSqr)  = DuckMathUtils.PrecalculateConstantsUniformEquipotential(EnergyModes.Low, mass, radius, period);
+                        (a, b, c, aSqr, bSqr, cSqr) = DuckMathUtils.PrecalculateConstantsUniformEquipotential(EnergyModes.Low, mass, radius, period);
                     if (energyMode == EnergyModes.High)
-                        (a, b, c, aSqr, bSqr, cSqr)  = DuckMathUtils.PrecalculateConstantsUniformEquipotential(EnergyModes.High, mass, radius, period);
+                        (a, b, c, aSqr, bSqr, cSqr) = DuckMathUtils.PrecalculateConstantsUniformEquipotential(EnergyModes.High, mass, radius, period);
                     break;
                 case OblateModes.Blend:
                     criticality = DuckMathUtils.PrecalculateConstantsPointEquipotential(mass, radius, period);
@@ -111,6 +111,26 @@ namespace VertexHeightOblateAdvanced
                     return vertHeight * DuckMathUtils.CalculateDeformityContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
                 default:
                     return vertHeight;
+            }
+        }
+
+        public Vector3 CalculateNormal(double u, double v)
+        {
+            double phi = 2 * Math.PI * u;
+            double theta = Math.PI * v;
+            switch (oblateMode)
+            {
+                case OblateModes.PointEquipotential:
+                    return DuckMathUtils.CalculateNormalPointEquipotential(phi, theta, criticality);
+                case OblateModes.Blend:
+                    return DuckMathUtils.CalculateNormalBlend(phi, theta, criticality, aSqr, bSqr, cSqr);
+                case OblateModes.UniformEquipotential:
+                case OblateModes.CustomEllipsoid:
+                    return DuckMathUtils.CalculateNormalEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+                case OblateModes.ContactBinary:
+                    return DuckMathUtils.CalculateNormalContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
+                default:
+                    return new Vector3();
             }
         }
 

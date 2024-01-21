@@ -39,7 +39,7 @@ namespace VertexHeightOblateAdvanced
 
         // Mass of the body
         [ParserTarget("mass")]
-        public NumericParser<Double> Mass
+        public NumericParser<double> Mass
         {
             get { return Mod.mass; }
             set { Mod.mass = value; }
@@ -47,7 +47,7 @@ namespace VertexHeightOblateAdvanced
 
         // Reference radius of the body
         [ParserTarget("radius")]
-        public NumericParser<Double> Radius
+        public NumericParser<double> Radius
         {
             get { return Mod.radius; }
             set { Mod.radius = value; }
@@ -55,7 +55,7 @@ namespace VertexHeightOblateAdvanced
 
         // Reference surface gravity of the body
         [ParserTarget("geeASL")]
-        public NumericParser<Double> GeeASL
+        public NumericParser<double> GeeASL
         {
             get { return Mod.geeASL; }
             set { Mod.geeASL = value; }
@@ -63,7 +63,7 @@ namespace VertexHeightOblateAdvanced
 
         // Rotational period of the body
         [ParserTarget("period")]
-        public NumericParser<Double> Period
+        public NumericParser<double> Period
         {
             get { return Mod.period; }
             set { Mod.period = value; }
@@ -71,7 +71,7 @@ namespace VertexHeightOblateAdvanced
 
         // Primary equatorial axis as ratio of reference radius
         [ParserTarget("a")]
-        public NumericParser<Double> A
+        public NumericParser<double> A
         {
             get { return Mod.a; }
             set { Mod.a = value; }
@@ -79,7 +79,7 @@ namespace VertexHeightOblateAdvanced
 
         // Secondary equatorial axis as ratio of reference radius
         [ParserTarget("b")]
-        public NumericParser<Double> B
+        public NumericParser<double> B
         {
             get { return Mod.b; }
             set { Mod.b = value; }
@@ -87,7 +87,7 @@ namespace VertexHeightOblateAdvanced
 
         // Polar axis as ratio of reference radius
         [ParserTarget("c")]
-        public NumericParser<Double> C
+        public NumericParser<double> C
         {
             get { return Mod.c; }
             set { Mod.c = value; }
@@ -95,7 +95,7 @@ namespace VertexHeightOblateAdvanced
 
         // Radius of larger body as a ratio of neck radius
         [ParserTarget("primaryRadius")]
-        public NumericParser<Double> PrimaryRadius
+        public NumericParser<double> PrimaryRadius
         {
             get { return Mod.primaryRadius; }
             set { Mod.primaryRadius = value; }
@@ -103,7 +103,7 @@ namespace VertexHeightOblateAdvanced
 
         // Radius of smaller body as a ratio of neck radius
         [ParserTarget("secondaryRadius")]
-        public NumericParser<Double> SecondaryRadius
+        public NumericParser<double> SecondaryRadius
         {
             get { return Mod.secondaryRadius; }
             set { Mod.secondaryRadius = value; }

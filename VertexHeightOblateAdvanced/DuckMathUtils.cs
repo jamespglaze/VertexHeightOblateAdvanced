@@ -12,7 +12,7 @@ namespace VertexHeightOblateAdvanced
     internal class DuckMathUtils
     {
         public const double G = 6.67430E-011;
-        private static double[][] lowEnergyLookup =
+        private static readonly double[][] lowEnergyLookup =
         {
             new double[] { 132859427, 1.00001, 1.00001 },
             new double[] { 74739908, 1.0000316, 1.0000316 },
@@ -63,7 +63,7 @@ namespace VertexHeightOblateAdvanced
             new double[] { 817921, 1.41, 1.41 },
             new double[] { 811995, 1.42, 1.42 },
         };
-        private static double[][] highEnergyLookup =
+        private static readonly double[][] highEnergyLookup =
         {
             new double[] { 813345, 2.89, 1.253 },
             new double[] { 810913, 2.87, 1.256 },
@@ -200,7 +200,7 @@ namespace VertexHeightOblateAdvanced
             return (a, b, c, Math.Pow(a, 2), Math.Pow(b, 2), Math.Pow(c, 2));
         }
 
-        public static (double, double, double, double, double, double) PrecalculateConstantsContactBinary(double primaryRadius, double secondaryRadius, double primarySlope, double secondarySlope, double primarySlopeXLimit, double secondarySlopeXLimit)
+        public static (double, double, double, double, double, double) PrecalculateConstantsContactBinary(double primaryRadius, double secondaryRadius)
         {
             // Clamp primaryRadius to the interval [1,2]
             primaryRadius = primaryRadius < 1.0f ? 1.0f
@@ -210,10 +210,10 @@ namespace VertexHeightOblateAdvanced
             secondaryRadius = secondaryRadius < 1.0f ? 1.0f
                 : secondaryRadius > primaryRadius ? primaryRadius
                 : secondaryRadius;
-            primarySlope = Math.Pow(primaryRadius, 2) - 1;
-            secondarySlope = Math.Pow(secondaryRadius, 2) - 1;
-            primarySlopeXLimit = primaryRadius / (1 + primarySlope);
-            secondarySlopeXLimit = -secondaryRadius / (1 + secondarySlope);
+            double primarySlope = Math.Pow(primaryRadius, 2) - 1;
+            double secondarySlope = Math.Pow(secondaryRadius, 2) - 1;
+            double primarySlopeXLimit = primaryRadius / (1 + primarySlope);
+            double secondarySlopeXLimit = -secondaryRadius / (1 + secondarySlope);
             return (primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
         }
 
@@ -238,61 +238,17 @@ namespace VertexHeightOblateAdvanced
             }
             catch (Exception e)
             {
+                Debug.LogException(e);
                 return 1;
-            }
-        }
-
-        public static Vector3 CalculateNormalPointEquipotential(double phi, double theta, double criticality)
-        {
-            double heightScaleFactor = CalculateDeformityPointEquipotential(theta, criticality);
-            if (theta <= 0.0f || theta >= Math.PI * 1.0f || theta == Math.PI / 2 || criticality == 0.0f)
-            {
-                return new Vector3((float)(Math.Sin(theta) * Math.Cos(phi)), (float)Math.Cos(theta), (float)(Math.Sin(theta) * Math.Sin(phi)));
-            }
-            try
-            {
-                double term1 = Math.Sin((Math.PI + Math.Acos(criticality * Math.Sin(theta))) / 3) / (Math.Tan(theta) * Math.Sqrt(1 - Math.Pow(criticality * Math.Sin(theta), 2)));
-                double term2 = 3 * Math.Cos((Math.PI + Math.Acos(criticality * Math.Sin(theta))) / 3) / (Math.Tan(theta) * Math.Sin(theta) * criticality);
-                double result = -(term1 - term2) / heightScaleFactor;
-                double x = (Math.Sin(theta) * Math.Cos(phi)) + (Math.Cos(theta) * Math.Cos(phi) * result);
-                double y = Math.Cos(theta) - (Math.Sin(theta) * result);
-                double z = (Math.Sin(theta) * Math.Sin(phi)) + (Math.Cos(theta) * Math.Sin(phi) * result);
-                return new Vector3((float)x, (float)y, (float)z);
-            }
-            catch (Exception e)
-            {
-                return new Vector3((float)(Math.Sin(theta) * Math.Cos(phi)), (float)Math.Cos(theta), (float)(Math.Sin(theta) * Math.Sin(phi)));
             }
         }
 
         public static double CalculateDeformityEllipsoid(double phi, double theta, double aSqr, double bSqr, double cSqr)
         {
-            try
-            {
-                double term1 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Cos(phi), 2) / aSqr;
-                double term2 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Sin(phi), 2) / bSqr;
-                double term3 = Math.Pow(Math.Cos(theta), 2) / cSqr;
-                return 1 / Math.Sqrt(term1 + term2 + term3);
-            }
-            catch (Exception e)
-            {
-                return 1;
-            }
-        }
-
-        public static double CalculateNormalEllipsoid(double phi, double theta, double aSqr, double bSqr, double cSqr)
-        {
-            try
-            {
-                double term1 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Cos(phi), 2) / aSqr;
-                double term2 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Sin(phi), 2) / bSqr;
-                double term3 = Math.Pow(Math.Cos(theta), 2) / cSqr;
-                return 1 / Math.Sqrt(term1 + term2 + term3);
-            }
-            catch (Exception e)
-            {
-                return 1;
-            }
+            double term1 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Cos(phi), 2) / aSqr;
+            double term2 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Sin(phi), 2) / bSqr;
+            double term3 = Math.Pow(Math.Cos(theta), 2) / cSqr;
+            return 1 / Math.Sqrt(term1 + term2 + term3);
         }
 
         public static double CalculateDeformityContactBinary(double phi, double theta, double primaryRadius, double secondaryRadius, double primarySlope, double secondarySlope, double primarySlopeXLimit, double secondarySlopeXLimit)
@@ -325,14 +281,53 @@ namespace VertexHeightOblateAdvanced
             }
             catch (Exception e)
             {
+                Debug.LogException(e);
                 return 1;
             }
+        }
+
+        public static Vector3 CalculateNormalPointEquipotential(double phi, double theta, double criticality)
+        {
+            if (theta <= 0.0f || theta >= Math.PI * 1.0f || theta == Math.PI / 2 || criticality == 0.0f)
+            {
+                return new Vector3((float)(Math.Sin(theta) * Math.Cos(phi)), (float)Math.Cos(theta), (float)(Math.Sin(theta) * Math.Sin(phi)));
+            }
+            try
+            {
+                double r = CalculateDeformityPointEquipotential(theta, criticality);
+                double dTheta = DerivThetaPointEquipotential(theta, criticality);
+                return GetCartesianGradient(r, theta, phi, 1, -dTheta, 0);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return new Vector3((float)(Math.Sin(theta) * Math.Cos(phi)), (float)Math.Cos(theta), (float)(Math.Sin(theta) * Math.Sin(phi)));
+            }
+        }
+
+        public static Vector3 CalculateNormalEllipsoid(double phi, double theta, double aSqr, double bSqr, double cSqr)
+        {
+            double r = CalculateDeformityEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+            double dTheta = DerivThetaEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+            double dPhi = DerivPhiEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+            return GetCartesianGradient(r, theta, phi, 1, -dTheta, -dPhi);
+        }
+
+        public static Vector3 CalculateNormalBlend(double phi, double theta, double criticality, double aSqr, double bSqr, double cSqr)
+        {
+            double rPointEquipotential = CalculateDeformityPointEquipotential(theta, criticality);
+            double rEllipsoid = CalculateDeformityEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+            double r = rPointEquipotential * rEllipsoid;
+            double dTheta = rPointEquipotential * DerivThetaEllipsoid(phi, theta, aSqr, bSqr, cSqr) + rEllipsoid * DerivThetaPointEquipotential(theta, criticality);
+            double dPhi = rPointEquipotential * DerivPhiEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+            return GetCartesianGradient(r, theta, phi, 1, -dTheta, -dPhi);
         }
 
         public static Vector3 CalculateNormalContactBinary(double phi, double theta, double primaryRadius, double secondaryRadius, double primarySlope, double secondarySlope, double primarySlopeXLimit, double secondarySlopeXLimit)
         {
             try
             {
+                double r = CalculateDeformityContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
                 double denominator = 1.0f;
                 double xValue = 0.0f;
                 double dTheta = theta;
@@ -368,12 +363,59 @@ namespace VertexHeightOblateAdvanced
                         dPhi = 2 * secondaryRadius * Math.Sin(theta) * Math.Sin(phi);
                     }
                 }
-                return new Vector3((float)(Math.Sin(dTheta) * Math.Cos(phi)), (float)(Math.Sin(theta) * Math.Sin(phi)), (float)Math.Cos(phi));
+                return GetCartesianGradient(r, theta, phi, 1, -dTheta, -dPhi);
             }
             catch (Exception e)
             {
+                Debug.LogException(e);
                 return new Vector3((float)(Math.Sin(theta) * Math.Cos(phi)), (float)(Math.Sin(theta) * Math.Sin(phi)), (float)Math.Cos(phi));
             }
+        }
+
+        public static double DerivThetaPointEquipotential(double theta, double criticality)
+        {
+            double term1 = Math.Sin((Math.PI + Math.Acos(criticality * Math.Sin(theta))) / 3) / (Math.Tan(theta) * Math.Sqrt(1 - Math.Pow(criticality * Math.Sin(theta), 2)));
+            double term2 = 3 * Math.Cos((Math.PI + Math.Acos(criticality * Math.Sin(theta))) / 3) / (Math.Tan(theta) * Math.Sin(theta) * criticality);
+            return term1 - term2;
+        }
+
+        public static double DerivPhiEllipsoid(double phi, double theta, double aSqr, double bSqr, double cSqr)
+        {
+            double numerator = Math.Pow(Math.Sin(theta), 2) * Math.Sin(phi) * Math.Cos(phi) * (-(1 / aSqr) + (1 / bSqr));
+
+            double denominatorTerm1 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Cos(phi), 2) / aSqr;
+            double denominatorTerm2 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Sin(phi), 2) / bSqr;
+            double denominatorTerm3 = Math.Pow(Math.Cos(theta), 2) / cSqr;
+            double denominator = Math.Pow(denominatorTerm1 + denominatorTerm2 + denominatorTerm3, 1.5);
+            
+            return -numerator / denominator;
+        }
+
+        public static double DerivThetaEllipsoid(double phi, double theta, double aSqr, double bSqr, double cSqr)
+        {
+            double numeratorTerm1 = Math.Pow(Math.Cos(phi), 2) / aSqr;
+            double numeratorTerm2 = Math.Pow(Math.Sin(phi), 2) / bSqr;
+            double numeratorTerm3 = 1 / cSqr;
+            double numerator = Math.Sin(theta) * Math.Cos(theta) * (numeratorTerm1 + numeratorTerm2 - numeratorTerm3);
+
+            double denominatorTerm1 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Cos(phi), 2) / aSqr;
+            double denominatorTerm2 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Sin(phi), 2) / bSqr;
+            double denominatorTerm3 = Math.Pow(Math.Cos(theta), 2) / cSqr;
+            double denominator = Math.Pow(denominatorTerm1 + denominatorTerm2 + denominatorTerm3, 1.5);
+            
+            return -numerator / denominator;
+        }
+
+        public static Vector3 GetCartesianGradient(double r, double theta, double phi, double dR, double dTheta, double dPhi)
+        {
+            double thetaTerm = dTheta / r;
+            double phiTerm = dPhi / (r * Math.Sin(theta));
+            
+            double x = (Math.Sin(theta) * Math.Sin(phi) * dR) + (Math.Cos(theta) * Math.Sin(phi) * thetaTerm) + (Math.Cos(phi) * phiTerm);
+            double y = -((Math.Cos(theta) * dR) - (Math.Sin(theta) * thetaTerm));
+            double z = (Math.Sin(theta) * Math.Cos(phi) * dR) + (Math.Cos(theta) * Math.Cos(phi) * thetaTerm) - (Math.Sin(phi) * phiTerm);
+            
+            return new Vector3((float)x, (float)y, (float)z);
         }
     }
 }

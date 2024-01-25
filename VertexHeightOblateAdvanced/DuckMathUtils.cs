@@ -387,7 +387,7 @@ namespace VertexHeightOblateAdvanced
             double denominatorTerm2 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Sin(phi), 2) / bSqr;
             double denominatorTerm3 = Math.Pow(Math.Cos(theta), 2) / cSqr;
             double denominator = Math.Pow(denominatorTerm1 + denominatorTerm2 + denominatorTerm3, 1.5);
-            
+
             return -numerator / denominator;
         }
 
@@ -402,7 +402,7 @@ namespace VertexHeightOblateAdvanced
             double denominatorTerm2 = Math.Pow(Math.Sin(theta), 2) * Math.Pow(Math.Sin(phi), 2) / bSqr;
             double denominatorTerm3 = Math.Pow(Math.Cos(theta), 2) / cSqr;
             double denominator = Math.Pow(denominatorTerm1 + denominatorTerm2 + denominatorTerm3, 1.5);
-            
+
             return -numerator / denominator;
         }
 
@@ -410,12 +410,26 @@ namespace VertexHeightOblateAdvanced
         {
             double thetaTerm = dTheta / r;
             double phiTerm = dPhi / (r * Math.Sin(theta));
-            
+
             double x = (Math.Sin(theta) * Math.Sin(phi) * dR) + (Math.Cos(theta) * Math.Sin(phi) * thetaTerm) + (Math.Cos(phi) * phiTerm);
             double y = -((Math.Cos(theta) * dR) - (Math.Sin(theta) * thetaTerm));
             double z = (Math.Sin(theta) * Math.Cos(phi) * dR) + (Math.Cos(theta) * Math.Cos(phi) * thetaTerm) - (Math.Sin(phi) * phiTerm);
-            
+
             return new Vector3((float)x, (float)y, (float)z);
+        }
+
+        public static Vector3 GetApparentGravityVector(double r2, double r1, double w, double theta, double phi, double g)
+        {
+            double gravAccel = g * Math.Pow(r1 / r2, 2);
+            double centAccel = r2 * Math.Pow(w, 2) * Math.Sin(theta);
+            Vector3 gravAccelVector = new Vector3(-(float)(gravAccel * Math.Sin(theta) * Math.Cos(phi)), -(float)(gravAccel * Math.Cos(theta)), -(float)(gravAccel * Math.Sin(theta) * Math.Sin(phi)));
+            Vector3 centAccelVector = new Vector3((float)(centAccel * Math.Cos(phi)), 0.0f, (float)(centAccel * Math.Sin(phi)));
+            return gravAccelVector + centAccelVector;
+        }
+
+        public static double GetSynchronousAltitude(double r, double w, double g)
+        {
+            return Math.Pow(g * Math.Pow(r / w, 2), 1.0f / 3.0f);
         }
     }
 }

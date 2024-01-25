@@ -16,6 +16,7 @@ using KSP.Localization;
 using System.ComponentModel;
 using static Kopernicus.Components.DrawTools;
 using static KSP.UI.Screens.MessageSystem;
+using System.Reflection;
 
 namespace VertexHeightOblateAdvanced
 {
@@ -23,19 +24,21 @@ namespace VertexHeightOblateAdvanced
     {
         internal enum CustomModes
         {
-            [Description("BASE")] BASE = 0,
-            [Description("OBLATE")] OBLATE = 1,
+            [Description("FREE")] FREE = 0,
+            [Description("SURFACE NORMAL")] SURFNORMAL = 1,
+            [Description("GRAVITY NORMAL")] GRAVNORMAL = 2,
         }
-        internal static CustomModes customMode = CustomModes.BASE;
+        internal static CustomModes customMode = CustomModes.FREE;
     }
 
-    [KSPAddon(KSPAddon.Startup.Flight, false)]
+    [KSPAddon(KSPAddon.Startup.Flight, true)]
     public class CustomCameraInjector : MonoBehaviour
     {
         public void Awake()
         {
+            Assembly assembly = Assembly.GetExecutingAssembly();
             Harmony harmony = new Harmony("CameraInjector");
-            harmony.PatchAll();
+            harmony.PatchAll(assembly);
         }
     }
 
@@ -44,21 +47,52 @@ namespace VertexHeightOblateAdvanced
     {
         private static bool Prefix(ref Quaternion __result, ref FoRModes mode, ref FoRModes ___FoRMode)
         {
+            Vessel activeVessel = FlightGlobals.ActiveVessel;
             CelestialBody currentMainBody = FlightGlobals.currentMainBody;
             PQSMod_VertexHeightOblateAdvanced currentMainBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(currentMainBody.pqsController);
-            Vessel activeVessel = FlightGlobals.ActiveVessel;
-            if (currentMainBodyOblateMod != null && CustomCameraConstants.customMode != CustomCameraConstants.CustomModes.BASE && FlightCamera.fetch.mode == FlightCamera.Modes.FREE)
+            if (currentMainBodyOblateMod != null && CustomCameraConstants.customMode != CustomCameraConstants.CustomModes.FREE && FlightCamera.fetch.mode == FlightCamera.Modes.FREE)
             {
-                double v = 0.5f + (currentMainBody.GetLatitude(activeVessel.GetWorldPos3D()) / 180.0f);
-                double u = 0.25f - (currentMainBody.GetLongitude(activeVessel.GetWorldPos3D()) / (2 * 180.0f));
-                Vector3 normalVector = FlightGlobals.ActiveVessel.mainBody.transform.TransformVector(currentMainBodyOblateMod.CalculateNormal(u, v));
+                Vector3 normalVector;
+                Vector3 normalVectorLerped;
+                Vector3 normalVectorSpherical = (Vector3)FlightGlobals.getUpAxis(currentMainBody, (Vector3d)activeVessel.ReferenceTransform.position);
+
+                double maximumRadius = currentMainBodyOblateMod.GetMaxDeformity(currentMainBody.Radius);
+                double vesselRadius = activeVessel.altitude + currentMainBody.Radius;
+                double endLerpRadius = Math.Min(DuckMathUtils.GetSynchronousAltitude(currentMainBody.Radius, currentMainBody.angularV, currentMainBody.GeeASL * PhysicsGlobals.GravitationalAcceleration), maximumRadius + (currentMainBody.Radius / 10.0f));
+                double frameLerp = endLerpRadius > maximumRadius ? (vesselRadius - maximumRadius) / (endLerpRadius - maximumRadius) : 1;
+                if (endLerpRadius < vesselRadius)
+                {
+                    ___FoRMode = mode;
+                    __result = Quaternion.LookRotation(Quaternion.AngleAxis(90f, Vector3.Cross(Vector3.up, normalVectorSpherical)) * -normalVectorSpherical, normalVectorSpherical);
+                    return true;
+                }
+
+                switch (CustomCameraConstants.customMode)
+                {
+                    case CustomCameraConstants.CustomModes.SURFNORMAL:
+                        double v = 0.5f + (currentMainBody.GetLatitude(activeVessel.GetWorldPos3D()) / 180.0f);
+                        double u = 0.25f - (currentMainBody.GetLongitude(activeVessel.GetWorldPos3D()) / (2 * 180.0f));
+                        normalVector = FlightGlobals.ActiveVessel.mainBody.transform.TransformVector(currentMainBodyOblateMod.GetNormal(u, v));
+                        break;
+                    case CustomCameraConstants.CustomModes.GRAVNORMAL:
+                        double theta = (90 - currentMainBody.GetLatitude(activeVessel.GetWorldPos3D())) * Math.PI / 180.0f;
+                        double phi = currentMainBody.GetLongitude(activeVessel.GetWorldPos3D()) * Math.PI / 180.0f;
+                        normalVector = FlightGlobals.ActiveVessel.mainBody.transform.TransformVector(-DuckMathUtils.GetApparentGravityVector(vesselRadius, currentMainBody.Radius, currentMainBody.angularV, theta, phi, currentMainBody.GeeASL * PhysicsGlobals.GravitationalAcceleration));
+                        break;
+                    default:
+                        normalVector = normalVectorSpherical;
+                        break;
+                }
+                normalVectorLerped = vesselRadius < maximumRadius ? normalVector : Vector3.Lerp(normalVector, normalVectorSpherical, (float)frameLerp);
+
                 ___FoRMode = mode;
-                __result = Quaternion.LookRotation(Quaternion.AngleAxis(90f, Vector3.Cross(Vector3.up, normalVector)) * -normalVector, normalVector);
+                __result = Quaternion.LookRotation(Quaternion.AngleAxis(90f, Vector3.Cross(Vector3.up, normalVectorLerped)) * -normalVectorLerped, normalVectorLerped);
+
                 return false;
             }
             else
             {
-                CustomCameraConstants.customMode = CustomCameraConstants.CustomModes.BASE;
+                CustomCameraConstants.customMode = CustomCameraConstants.CustomModes.FREE;
             }
             return true;
         }
@@ -74,9 +108,9 @@ namespace VertexHeightOblateAdvanced
             {
                 if (m != FlightCamera.Modes.FREE)
                 {
-                    CustomCameraConstants.customMode = (CustomCameraConstants.CustomModes)(((int)CustomCameraConstants.customMode + 1) % 2);
+                    CustomCameraConstants.customMode = (CustomCameraConstants.CustomModes)(((int)CustomCameraConstants.customMode + 1) % 3);
                 }
-                if (CustomCameraConstants.customMode != CustomCameraConstants.CustomModes.BASE)
+                if (CustomCameraConstants.customMode != CustomCameraConstants.CustomModes.FREE)
                 {
                     MonoBehaviour.print("Camera Mode: " + CustomCameraConstants.customMode.ToString());
                     ___cameraModeReadout.message = Localizer.Format("#autoLOC_133776", new string[1]
@@ -96,7 +130,7 @@ namespace VertexHeightOblateAdvanced
             }
             else
             {
-                CustomCameraConstants.customMode = CustomCameraConstants.CustomModes.BASE;
+                CustomCameraConstants.customMode = CustomCameraConstants.CustomModes.FREE;
             }
             return true;
         }

@@ -94,19 +94,19 @@ namespace VertexHeightOblateAdvanced
         }
 
         // Radius of larger body as a ratio of neck radius
-        [ParserTarget("primaryRadius")]
-        public NumericParser<double> PrimaryRadius
-        {
-            get { return Mod.primaryRadius; }
-            set { Mod.primaryRadius = value; }
-        }
+        //[ParserTarget("primaryRadius")]
+        //public NumericParser<double> PrimaryRadius
+        //{
+        //    get { return Mod.primaryRadius; }
+        //    set { Mod.primaryRadius = value; }
+        //}
 
         // Radius of smaller body as a ratio of neck radius
-        [ParserTarget("secondaryRadius")]
-        public NumericParser<double> SecondaryRadius
-        {
-            get { return Mod.secondaryRadius; }
-            set { Mod.secondaryRadius = value; }
-        }
+        //[ParserTarget("secondaryRadius")]
+        //public NumericParser<double> SecondaryRadius
+        //{
+        //    get { return Mod.secondaryRadius; }
+        //    set { Mod.secondaryRadius = value; }
+        //}
     }
 }

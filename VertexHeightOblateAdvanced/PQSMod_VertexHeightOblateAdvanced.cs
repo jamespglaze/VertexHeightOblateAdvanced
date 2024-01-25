@@ -36,17 +36,17 @@ namespace VertexHeightOblateAdvanced
         public double a = 1.0f;
         public double b = 1.0f;
         public double c = 1.0f;
-        public double primaryRadius = 1.0f;
-        public double secondaryRadius = 1.0f;
+        //public double primaryRadius = 1.0f;
+        //public double secondaryRadius = 1.0f;
 
         private double criticality = 0.0f;
         private double aSqr = 1.0f;
         private double bSqr = 1.0f;
         private double cSqr = 1.0f;
-        private double primarySlope = 0.0f;
-        private double secondarySlope = 0.0f;
-        private double primarySlopeXLimit = 0.0f;
-        private double secondarySlopeXLimit = 0.0f;
+        //private double primarySlope = 0.0f;
+        //private double secondarySlope = 0.0f;
+        //private double primarySlopeXLimit = 0.0f;
+        //private double secondarySlopeXLimit = 0.0f;
 
         private void PrecalculateValues()
         {
@@ -55,9 +55,9 @@ namespace VertexHeightOblateAdvanced
                 case OblateModes.CustomEllipsoid:
                     (a, b, c, aSqr, bSqr, cSqr) = DuckMathUtils.PrecalculateConstantsEllipsoid(a, b, c);
                     break;
-                case OblateModes.ContactBinary:
-                    (primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit) = DuckMathUtils.PrecalculateConstantsContactBinary(primaryRadius, secondaryRadius);
-                    break;
+                //case OblateModes.ContactBinary:
+                //    (primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit) = DuckMathUtils.PrecalculateConstantsContactBinary(primaryRadius, secondaryRadius);
+                //    break;
                 default:
                     break;
             }
@@ -93,7 +93,7 @@ namespace VertexHeightOblateAdvanced
             (a, b, c, aSqr, bSqr, cSqr) = DuckMathUtils.PrecalculateConstantsEllipsoid(a, b, c);
         }
 
-        private double CalculateDeformity(double vertHeight, double u, double v)
+        public double GetDeformity(double vertHeight, double u, double v)
         {
             double phi = 2 * Math.PI * u;
             double theta = Math.PI * v;
@@ -107,14 +107,14 @@ namespace VertexHeightOblateAdvanced
                 case OblateModes.UniformEquipotential:
                 case OblateModes.CustomEllipsoid:
                     return vertHeight * DuckMathUtils.CalculateDeformityEllipsoid(phi, theta, aSqr, bSqr, cSqr);
-                case OblateModes.ContactBinary:
-                    return vertHeight * DuckMathUtils.CalculateDeformityContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
+                //case OblateModes.ContactBinary:
+                //    return vertHeight * DuckMathUtils.CalculateDeformityContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
                 default:
                     return vertHeight;
             }
         }
 
-        public Vector3 CalculateNormal(double u, double v)
+        public Vector3 GetNormal(double u, double v)
         {
             double phi = 2 * Math.PI * u;
             double theta = Math.PI * v;
@@ -127,11 +127,32 @@ namespace VertexHeightOblateAdvanced
                 case OblateModes.UniformEquipotential:
                 case OblateModes.CustomEllipsoid:
                     return DuckMathUtils.CalculateNormalEllipsoid(phi, theta, aSqr, bSqr, cSqr);
-                case OblateModes.ContactBinary:
-                    return DuckMathUtils.CalculateNormalContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
+                //case OblateModes.ContactBinary:
+                //    return DuckMathUtils.CalculateNormalContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
                 default:
                     return new Vector3();
             }
+        }
+
+        public double GetMaxDeformity(double vertHeight)
+        {
+            //if (secondaryRadius < primaryRadius)
+            //{
+            //    return GetDeformity(vertHeight, 0.0f, 0.5f);
+            //}
+            //if (primaryRadius < secondaryRadius)
+            //{
+            //    return GetDeformity(vertHeight, 0.5f, 0.5f);
+            //}
+            if (a < c && b < c)
+            {
+                return GetDeformity(vertHeight, 0.0f, 0.0f);
+            }
+            if(a < b && c < b)
+            {
+                return GetDeformity(vertHeight, 0.25f, 0.5f);
+            }
+            return GetDeformity(vertHeight, 0.0f, 0.5f);
         }
 
         public override void OnSetup()
@@ -143,7 +164,7 @@ namespace VertexHeightOblateAdvanced
         public override void OnVertexBuildHeight(PQS.VertexBuildData data)
         {
             //Apply height
-            data.vertHeight = CalculateDeformity(data.vertHeight, data.u, data.v);
+            data.vertHeight = GetDeformity(data.vertHeight, data.u, data.v);
         }
     }
 }

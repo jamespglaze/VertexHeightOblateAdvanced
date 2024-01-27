@@ -29,6 +29,7 @@ namespace VertexHeightOblateAdvanced
             [Description("GRAVITY NORMAL")] GRAVNORMAL = 2,
         }
         internal static CustomModes customMode = CustomModes.FREE;
+        internal static bool baseHasOrbitDriftCompensation = GameSettings.ORBIT_DRIFT_COMPENSATION;
     }
 
     [KSPAddon(KSPAddon.Startup.Flight, true)]
@@ -60,10 +61,8 @@ namespace VertexHeightOblateAdvanced
                 double vesselRadius = activeVessel.altitude + currentMainBody.Radius;
                 double endLerpRadius = Math.Min(DuckMathUtils.GetSynchronousAltitude(currentMainBody.Radius, currentMainBody.angularV, currentMainBody.GeeASL * PhysicsGlobals.GravitationalAcceleration), maximumRadius + (currentMainBody.Radius / 10.0f));
                 double frameLerp = endLerpRadius > maximumRadius ? (vesselRadius - maximumRadius) / (endLerpRadius - maximumRadius) : 1;
-                if (endLerpRadius < vesselRadius)
+                if (frameLerp >= 1)
                 {
-                    ___FoRMode = mode;
-                    __result = Quaternion.LookRotation(Quaternion.AngleAxis(90f, Vector3.Cross(Vector3.up, normalVectorSpherical)) * -normalVectorSpherical, normalVectorSpherical);
                     return true;
                 }
 
@@ -75,9 +74,7 @@ namespace VertexHeightOblateAdvanced
                         normalVector = FlightGlobals.ActiveVessel.mainBody.transform.TransformVector(currentMainBodyOblateMod.GetNormal(u, v));
                         break;
                     case CustomCameraConstants.CustomModes.GRAVNORMAL:
-                        double theta = (90 - currentMainBody.GetLatitude(activeVessel.GetWorldPos3D())) * Math.PI / 180.0f;
-                        double phi = currentMainBody.GetLongitude(activeVessel.GetWorldPos3D()) * Math.PI / 180.0f;
-                        normalVector = FlightGlobals.ActiveVessel.mainBody.transform.TransformVector(-DuckMathUtils.GetApparentGravityVector(vesselRadius, currentMainBody.Radius, currentMainBody.angularV, theta, phi, currentMainBody.GeeASL * PhysicsGlobals.GravitationalAcceleration));
+                        normalVector = -(FlightGlobals.getGeeForceAtPosition(activeVessel.GetWorldPos3D(), currentMainBody) + FlightGlobals.getCentrifugalAcc(activeVessel.GetWorldPos3D(), currentMainBody));
                         break;
                     default:
                         normalVector = normalVectorSpherical;
@@ -132,6 +129,43 @@ namespace VertexHeightOblateAdvanced
             {
                 CustomCameraConstants.customMode = CustomCameraConstants.CustomModes.FREE;
             }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(FlightGlobals), nameof(FlightGlobals.getGeeForceAtPosition), new Type[] { typeof(Vector3d), typeof(CelestialBody) })]
+    public static class getGeeForceAtPositionOverride
+    {
+        private static bool Prefix(ref Vector3d __result, ref Vector3d pos, ref CelestialBody mainBody)
+        {
+            PQSMod_VertexHeightOblateAdvanced mainBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(mainBody.pqsController);
+            if (mainBodyOblateMod != null && mainBodyOblateMod.oblateMode == PQSMod_VertexHeightOblateAdvanced.OblateModes.ContactBinary)
+            {
+                Vector3d bodyRelativePos = pos - mainBody.position;
+                Vector3d pointGeeForce = bodyRelativePos * -mainBody.gMagnitudeAtCenter / (bodyRelativePos.sqrMagnitude * Math.Sqrt(bodyRelativePos.sqrMagnitude));
+                Vector3d primaryPos = mainBody.bodyTransform.transform.TransformVector(new Vector3d(0, 0, mainBody.Radius * mainBodyOblateMod.primaryRadius));
+                Vector3d secondaryPos = mainBody.bodyTransform.transform.TransformVector(new Vector3d(0, 0, -mainBody.Radius * mainBodyOblateMod.secondaryRadius));
+                double maximumRadius = mainBodyOblateMod.GetMaxDeformity(mainBody.Radius);
+                double endLerpRadius = maximumRadius + (mainBody.Radius / 10.0f);
+                double frameLerp = endLerpRadius > maximumRadius ? (bodyRelativePos.magnitude - maximumRadius) / (endLerpRadius - maximumRadius) : 1;
+                if (frameLerp >= 1)
+                {
+                    GameSettings.ORBIT_DRIFT_COMPENSATION = CustomCameraConstants.baseHasOrbitDriftCompensation;
+                    return true;
+                }
+                GameSettings.ORBIT_DRIFT_COMPENSATION = false;
+                double primaryMassRatio = Math.Pow(mainBodyOblateMod.primaryRadius, 3) / (Math.Pow(mainBodyOblateMod.primaryRadius, 3) + Math.Pow(mainBodyOblateMod.secondaryRadius, 3));
+                double secondaryMassRatio = 1.0f - primaryMassRatio;
+                Vector3d primaryDistance = primaryPos - bodyRelativePos;
+                Vector3d secondaryDistance = secondaryPos - bodyRelativePos;
+                double primaryGeeForce = (DuckMathUtils.G * mainBody.Mass * primaryMassRatio) / (primaryDistance.sqrMagnitude * PhysicsGlobals.GravitationalAcceleration);
+                double secondaryGeeForce = (DuckMathUtils.G * mainBody.Mass * secondaryMassRatio) / (secondaryDistance.sqrMagnitude * PhysicsGlobals.GravitationalAcceleration);
+                Vector3 resultantGeeForce = (primaryDistance.normalized * (float)primaryGeeForce) + (secondaryDistance.normalized * (float)secondaryGeeForce);
+
+                __result = Vector3d.Lerp(resultantGeeForce, pointGeeForce, frameLerp);
+                return false;
+            }
+            GameSettings.ORBIT_DRIFT_COMPENSATION = CustomCameraConstants.baseHasOrbitDriftCompensation;
             return true;
         }
     }

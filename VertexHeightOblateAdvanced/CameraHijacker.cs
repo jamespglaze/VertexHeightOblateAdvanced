@@ -134,7 +134,7 @@ namespace VertexHeightOblateAdvanced
     }
 
     [HarmonyPatch(typeof(FlightGlobals), nameof(FlightGlobals.getGeeForceAtPosition), new Type[] { typeof(Vector3d), typeof(CelestialBody) })]
-    public static class getGeeForceAtPositionOverride
+    public static class GetGeeForceAtPositionOverride
     {
         private static bool Prefix(ref Vector3d __result, ref Vector3d pos, ref CelestialBody mainBody)
         {
@@ -167,6 +167,112 @@ namespace VertexHeightOblateAdvanced
             }
             GameSettings.ORBIT_DRIFT_COMPENSATION = CustomCameraConstants.baseHasOrbitDriftCompensation;
             return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(FlightGlobals), nameof(FlightGlobals.getAltitudeAtPos), new Type[] { typeof(Vector3d), typeof(CelestialBody) })]
+    public static class GetAltitudeAtPosOverride
+    {
+        private static bool Prefix(ref double __result, ref Vector3d position, ref CelestialBody body)
+        {
+            PQSMod_VertexHeightOblateAdvanced currentBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(body.pqsController);
+            if (currentBodyOblateMod != null)
+            {
+                double v = 0.5f + (body.GetLatitude(position) / 180.0f);
+                double u = 0.25f - (body.GetLongitude(position) / (2 * 180.0f));
+                __result = Vector3d.Distance(position, body.position) - body.Radius * currentBodyOblateMod.GetDeformity(1, u, v);
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(AtmosphereFromGround), nameof(AtmosphereFromGround.SetMaterial), new Type[] { typeof(bool) })]
+    public static class SetMaterialOverride
+    {
+        static float baseOuterRadius = 0.0f;
+        static float baseOuterRadius2 = 0.0f;
+        static float baseInnerRadius = 0.0f;
+        static float baseInnerRadius2 = 0.0f;
+        static float baseScale = 0.0f;
+        static float baseScaleOverScaleDepth = 0.0f;
+        private static bool Prefix(AtmosphereFromGround __instance, ref bool initialSet)
+        {
+            CelestialBody planet = __instance.planet;
+            PQSMod_VertexHeightOblateAdvanced currentBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(planet.pqsController);
+            if (currentBodyOblateMod != null)
+            {
+                Debug.Log("In Prefix for SetMaterial");
+                Debug.Log("planet name is: " + planet.name);
+                double v = 0.5f + (planet.GetLatitude(__instance.mainCamera.position) / 180.0f);
+                double u = 0.25f - (planet.GetLongitude(__instance.mainCamera.position) / (2 * 180.0f));
+                double offset = planet.Radius * (currentBodyOblateMod.GetDeformity(1, u, v) - 1) * ScaledSpace.InverseScaleFactor;
+                baseOuterRadius = __instance.outerRadius;
+                baseOuterRadius2 = __instance.outerRadius2;
+                baseInnerRadius = __instance.innerRadius;
+                baseInnerRadius2 = __instance.innerRadius2;
+                baseScale = __instance.scale;
+                baseScaleOverScaleDepth = __instance.scaleOverScaleDepth;
+                Debug.Log("offset is: " + offset);
+                Debug.Log("baseOuterRadius is: " + baseOuterRadius);
+                Debug.Log("baseOuterRadius2 is: " + baseOuterRadius2);
+                Debug.Log("baseInnerRadius is: " + baseInnerRadius);
+                Debug.Log("baseInnerRadius2 is: " + baseInnerRadius2);
+                Debug.Log("baseInnerRadius is: " + baseScale);
+                Debug.Log("baseInnerRadius2 is: " + baseScaleOverScaleDepth);
+                __instance.outerRadius += (float)offset;
+                __instance.outerRadius2 = __instance.outerRadius * __instance.outerRadius;
+                __instance.innerRadius += (float)offset;
+                __instance.innerRadius2 = __instance.innerRadius * __instance.innerRadius;
+                __instance.scale = 1.0f / (__instance.outerRadius - __instance.innerRadius);
+                __instance.scaleOverScaleDepth = __instance.scale / __instance.scaleDepth;
+                Debug.Log("__instance.outerRadius is: " + __instance.outerRadius);
+                Debug.Log("__instance.outerRadius2 is: " + __instance.outerRadius2);
+                Debug.Log("__instance.innerRadius is: " + __instance.innerRadius);
+                Debug.Log("__instance.innerRadius2 is: " + __instance.innerRadius2);
+                Debug.Log("__instance.scale is: " + __instance.scale);
+                Debug.Log("__instance.scaleOverScaleDepth is: " + __instance.scaleOverScaleDepth);
+                Debug.Log("Done with Prefix for SetMaterial");
+                initialSet = true;
+            }
+            return true;
+        }
+
+        private static void Postfix(AtmosphereFromGround __instance)
+        {
+            CelestialBody planet = __instance.planet;
+            PQSMod_VertexHeightOblateAdvanced currentBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(planet.pqsController);
+            if (currentBodyOblateMod != null)
+            {
+                Debug.Log("In Postfix for SetMaterial");
+                Debug.Log("__instance is: " + __instance);
+                Debug.Log("__instance.outerRadius is: " + __instance.outerRadius);
+                Debug.Log("__instance.outerRadius2 is: " + __instance.outerRadius2);
+                Debug.Log("__instance.innerRadius is: " + __instance.innerRadius);
+                Debug.Log("__instance.innerRadius2 is: " + __instance.innerRadius2);
+                Debug.Log("__instance.scale is: " + __instance.scale);
+                Debug.Log("__instance.scaleOverScaleDepth is: " + __instance.scaleOverScaleDepth);
+                Debug.Log("baseOuterRadius is: " + baseOuterRadius);
+                Debug.Log("baseOuterRadius2 is: " + baseOuterRadius2);
+                Debug.Log("baseInnerRadius is: " + baseInnerRadius);
+                Debug.Log("baseInnerRadius2 is: " + baseInnerRadius2);
+                Debug.Log("baseInnerRadius is: " + baseScale);
+                Debug.Log("baseInnerRadius2 is: " + baseScaleOverScaleDepth);
+                __instance.outerRadius = baseOuterRadius;
+                __instance.outerRadius2 = baseOuterRadius2;
+                __instance.innerRadius = baseInnerRadius;
+                __instance.innerRadius2 = baseInnerRadius2;
+                __instance.scale = baseScale;
+                __instance.scaleOverScaleDepth = baseScaleOverScaleDepth;
+                Debug.Log("__instance.outerRadius is: " + __instance.outerRadius);
+                Debug.Log("__instance.outerRadius2 is: " + __instance.outerRadius2);
+                Debug.Log("__instance.innerRadius is: " + __instance.innerRadius);
+                Debug.Log("__instance.innerRadius2 is: " + __instance.innerRadius2);
+                Debug.Log("__instance.scale is: " + __instance.scale);
+                Debug.Log("__instance.scaleOverScaleDepth is: " + __instance.scaleOverScaleDepth);
+                Debug.Log("Done with Postfix for SetMaterial");
+            }
         }
     }
 }

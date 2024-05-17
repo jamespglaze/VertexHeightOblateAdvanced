@@ -33,12 +33,12 @@ namespace VertexHeightOblateAdvanced
     }
 
     [KSPAddon(KSPAddon.Startup.Flight, true)]
-    public class CustomCameraInjector : MonoBehaviour
+    public class VertexHeightOblateAdvancedHarmonyPatches : MonoBehaviour
     {
         public void Awake()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
-            Harmony harmony = new Harmony("CameraInjector");
+            Harmony harmony = new Harmony("VertexHeightOblateAdvanced");
             harmony.PatchAll(assembly);
         }
     }
@@ -191,87 +191,174 @@ namespace VertexHeightOblateAdvanced
     [HarmonyPatch(typeof(AtmosphereFromGround), nameof(AtmosphereFromGround.SetMaterial), new Type[] { typeof(bool) })]
     public static class SetMaterialOverride
     {
-        static float baseOuterRadius = 0.0f;
-        static float baseOuterRadius2 = 0.0f;
-        static float baseInnerRadius = 0.0f;
-        static float baseInnerRadius2 = 0.0f;
-        static float baseScale = 0.0f;
-        static float baseScaleOverScaleDepth = 0.0f;
-        private static bool Prefix(AtmosphereFromGround __instance, ref bool initialSet)
+        public class AtmosphereFromGroundCache
+        {
+            internal float cameraHeight = 0.0f;
+            internal float cameraHeight2 = 0.0f;
+            internal float camHeightUnderwater = 0.0f;
+            internal float lightDot = 0.0f;
+            internal float KrESun = 0.0f;
+
+            internal float outerRadius = 0.0f;
+            internal float outerRadius2 = 0.0f;
+            internal float innerRadius = 0.0f;
+            internal float innerRadius2 = 0.0f;
+            internal float KmESun = 0.0f;
+            internal float Kr4PI = 0.0f;
+            internal float Km4PI = 0.0f;
+            internal float scale = 0.0f;
+            internal float scaleDepth = 0.0f;
+            internal float scaleOverScaleDepth = 0.0f;
+            internal float samples = 0.0f;
+            internal float g = 0.0f;
+            internal float g2 = 0.0f;
+            internal float exposure = 0.0f;
+            internal float underwaterOpacityAltBase = 0.0f;
+            internal float underwaterOpacityAltMult = 0.0f;
+            internal float scaleToApply = 0.0f;
+        }
+
+        public static Dictionary<String, Vector3> baseBodyScaleCache = new Dictionary<String, Vector3>();
+
+        public static Dictionary<String, AtmosphereFromGroundCache> baseBodyCaches = new Dictionary<String, AtmosphereFromGroundCache>();
+        public static Dictionary<String, AtmosphereFromGroundCache> overrideBodyCaches = new Dictionary<String, AtmosphereFromGroundCache>();
+
+        public static Dictionary<String, Vector3> overrideRenderScaleCaches = new Dictionary<String, Vector3>();
+        public static Dictionary<String, Vector3> overrideTransformScaleCaches = new Dictionary<String, Vector3>();
+        public static Dictionary<String, float> overrideRadiusScaleCaches = new Dictionary<String, float>();
+
+        private static bool Prefix(AtmosphereFromGround __instance, ref bool initialSet, ref Renderer ___r)
         {
             CelestialBody planet = __instance.planet;
-            PQSMod_VertexHeightOblateAdvanced currentBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(planet.pqsController);
-            if (currentBodyOblateMod != null)
+            if (planet.pqsController != null)
             {
-                Debug.Log("In Prefix for SetMaterial");
-                Debug.Log("planet name is: " + planet.name);
-                double v = 0.5f + (planet.GetLatitude(__instance.mainCamera.position) / 180.0f);
-                double u = 0.25f - (planet.GetLongitude(__instance.mainCamera.position) / (2 * 180.0f));
-                double offset = planet.Radius * (currentBodyOblateMod.GetDeformity(1, u, v) - 1) * ScaledSpace.InverseScaleFactor;
-                baseOuterRadius = __instance.outerRadius;
-                baseOuterRadius2 = __instance.outerRadius2;
-                baseInnerRadius = __instance.innerRadius;
-                baseInnerRadius2 = __instance.innerRadius2;
-                baseScale = __instance.scale;
-                baseScaleOverScaleDepth = __instance.scaleOverScaleDepth;
-                Debug.Log("offset is: " + offset);
-                Debug.Log("baseOuterRadius is: " + baseOuterRadius);
-                Debug.Log("baseOuterRadius2 is: " + baseOuterRadius2);
-                Debug.Log("baseInnerRadius is: " + baseInnerRadius);
-                Debug.Log("baseInnerRadius2 is: " + baseInnerRadius2);
-                Debug.Log("baseInnerRadius is: " + baseScale);
-                Debug.Log("baseInnerRadius2 is: " + baseScaleOverScaleDepth);
-                __instance.outerRadius += (float)offset;
-                __instance.outerRadius2 = __instance.outerRadius * __instance.outerRadius;
-                __instance.innerRadius += (float)offset;
-                __instance.innerRadius2 = __instance.innerRadius * __instance.innerRadius;
-                __instance.scale = 1.0f / (__instance.outerRadius - __instance.innerRadius);
-                __instance.scaleOverScaleDepth = __instance.scale / __instance.scaleDepth;
-                Debug.Log("__instance.outerRadius is: " + __instance.outerRadius);
-                Debug.Log("__instance.outerRadius2 is: " + __instance.outerRadius2);
-                Debug.Log("__instance.innerRadius is: " + __instance.innerRadius);
-                Debug.Log("__instance.innerRadius2 is: " + __instance.innerRadius2);
-                Debug.Log("__instance.scale is: " + __instance.scale);
-                Debug.Log("__instance.scaleOverScaleDepth is: " + __instance.scaleOverScaleDepth);
-                Debug.Log("Done with Prefix for SetMaterial");
-                initialSet = true;
+                PQSMod_VertexHeightOblateAdvanced currentBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(planet.pqsController);
+                if (currentBodyOblateMod != null)
+                {
+
+                    AtmosphereFromGroundCache baseBodyCache;
+                    if (baseBodyCaches.TryGetValue(planet.name, out baseBodyCache) == false)
+                    {
+                        baseBodyCache = new AtmosphereFromGroundCache();
+                        foreach (FieldInfo field in typeof(AtmosphereFromGroundCache).GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+                        {
+                            field.SetValue(baseBodyCache, typeof(AtmosphereFromGround).GetField(field.Name).GetValue(__instance));
+                        }
+                        baseBodyCaches.Add(planet.name, baseBodyCache);
+                        baseBodyScaleCache.Add(planet.name, __instance.transform.localScale);
+                    }
+                    foreach (FieldInfo field in typeof(AtmosphereFromGroundCache).GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+                    {
+                        field.SetValue(baseBodyCache, typeof(AtmosphereFromGround).GetField(field.Name).GetValue(__instance));
+                    }
+
+                    AtmosphereFromGroundCache overrideBodyCache;
+                    if (overrideBodyCaches.TryGetValue(planet.name, out overrideBodyCache) == false)
+                    {
+                        overrideBodyCache = new AtmosphereFromGroundCache();
+                        foreach (FieldInfo field in typeof(AtmosphereFromGroundCache).GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+                        {
+                            field.SetValue(overrideBodyCache, typeof(AtmosphereFromGround).GetField(field.Name).GetValue(__instance));
+                        }
+                        overrideBodyCaches.Add(planet.name, overrideBodyCache);
+                        overrideRenderScaleCaches.Add(planet.name, new Vector3(1.025f ,1.025f ,1.025f));
+                        overrideTransformScaleCaches.Add(planet.name, new Vector3(1.025f, 1.025f, 1.025f));
+                        overrideRadiusScaleCaches.Add(planet.name, 1f);
+                    }
+                    foreach (FieldInfo field in typeof(AtmosphereFromGroundCache).GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+                    {
+                        //Debug.Log(field.Name + "is: " + field.GetValue(overrideBodyCaches));
+                        typeof(AtmosphereFromGround).GetField(field.Name).SetValue(__instance, field.GetValue(overrideBodyCache));
+                    }
+
+                    //Debug.Log("In Prefix for SetMaterial");
+                    double v = 0.5f + (planet.GetLatitude(__instance.mainCamera.position) / 180.0f);
+                    double u = 0.25f - (planet.GetLongitude(__instance.mainCamera.position) / (2 * 180.0f));
+                    double offset = planet.Radius * (currentBodyOblateMod.GetDeformity(1, u, v)) * ScaledSpace.InverseScaleFactor;
+                    double innerRadus = planet.Radius * (currentBodyOblateMod.GetDeformity(1, u, v)) * ScaledSpace.InverseScaleFactor;
+
+                    __instance.outerRadius = (float)offset * 1.025f;
+                    __instance.outerRadius2 = __instance.outerRadius * __instance.outerRadius;
+                    __instance.innerRadius = (float)offset * 1.025f * 0.975f;
+                    __instance.innerRadius2 = __instance.innerRadius * __instance.innerRadius;
+                    //overrideBodyCache.scale = __instance.scale = 1.0f / (__instance.outerRadius - __instance.innerRadius);
+                    //__instance.scaleDepth = overrideBodyCache.scaleDepth;*/
+                    //overrideBodyCache.scaleOverScaleDepth = __instance.scaleOverScaleDepth = __instance.scale / __instance.scaleDepth;
+                    //Debug.Log("Done with Prefix for SetMaterial");
+
+                    Vector3 baseBodyScale;
+                    if (baseBodyScaleCache.TryGetValue(planet.name, out baseBodyScale) == true)
+                    {
+                        double atmosphereRatio = planet.atmosphereDepth / (planet.atmosphereDepth + planet.Radius);
+                        Debug.Log("atmosphereRatio is: " + atmosphereRatio);
+                        Vector3 overrideScale = new Vector3(baseBodyScale.x * 1.5f, baseBodyScale.y * 1.5f, baseBodyScale.z * 1.5f);
+                        __instance.transform.localScale = overrideScale;
+                        Shader shader = ___r.material.shader;
+                        int shaderPropCount = shader.GetPropertyCount();
+                        for (int i = 0; i < shaderPropCount; i++)
+                        {
+                            Debug.Log(shader.GetPropertyName(i) + ": " + shader.GetPropertyAttributes(i));
+                        }
+                    }
+                    Vector3 overrideRenderScaleCache;
+                    if (overrideRenderScaleCaches.TryGetValue(planet.name, out overrideRenderScaleCache) == true) {
+                        ___r.transform.localScale = overrideRenderScaleCache;
+                    }
+
+                    Vector3 overrideTransformScaleCache;
+                    if (overrideTransformScaleCaches.TryGetValue(planet.name, out overrideTransformScaleCache) == true) {
+                        __instance.transform.localScale = overrideTransformScaleCache;
+                    }
+
+                    float overrideRadiusScaleCache;
+                    if (overrideRadiusScaleCaches.TryGetValue(planet.name, out overrideRadiusScaleCache) == true) {
+                        __instance.outerRadius *= overrideRadiusScaleCache;
+                        __instance.outerRadius2 = __instance.outerRadius * __instance.outerRadius;
+                        __instance.innerRadius *= overrideRadiusScaleCache;
+                        __instance.innerRadius2 = __instance.innerRadius * __instance.innerRadius;
+                    }
+
+                    initialSet = true;
+                }
             }
             return true;
         }
 
-        private static void Postfix(AtmosphereFromGround __instance)
+        private static void Postfix(AtmosphereFromGround __instance, ref Renderer ___r, ref MaterialPropertyBlock ___mpb)
         {
             CelestialBody planet = __instance.planet;
-            PQSMod_VertexHeightOblateAdvanced currentBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(planet.pqsController);
-            if (currentBodyOblateMod != null)
+            if (planet.pqsController != null)
             {
-                Debug.Log("In Postfix for SetMaterial");
-                Debug.Log("__instance is: " + __instance);
-                Debug.Log("__instance.outerRadius is: " + __instance.outerRadius);
-                Debug.Log("__instance.outerRadius2 is: " + __instance.outerRadius2);
-                Debug.Log("__instance.innerRadius is: " + __instance.innerRadius);
-                Debug.Log("__instance.innerRadius2 is: " + __instance.innerRadius2);
-                Debug.Log("__instance.scale is: " + __instance.scale);
-                Debug.Log("__instance.scaleOverScaleDepth is: " + __instance.scaleOverScaleDepth);
-                Debug.Log("baseOuterRadius is: " + baseOuterRadius);
-                Debug.Log("baseOuterRadius2 is: " + baseOuterRadius2);
-                Debug.Log("baseInnerRadius is: " + baseInnerRadius);
-                Debug.Log("baseInnerRadius2 is: " + baseInnerRadius2);
-                Debug.Log("baseInnerRadius is: " + baseScale);
-                Debug.Log("baseInnerRadius2 is: " + baseScaleOverScaleDepth);
-                __instance.outerRadius = baseOuterRadius;
-                __instance.outerRadius2 = baseOuterRadius2;
-                __instance.innerRadius = baseInnerRadius;
-                __instance.innerRadius2 = baseInnerRadius2;
-                __instance.scale = baseScale;
-                __instance.scaleOverScaleDepth = baseScaleOverScaleDepth;
-                Debug.Log("__instance.outerRadius is: " + __instance.outerRadius);
-                Debug.Log("__instance.outerRadius2 is: " + __instance.outerRadius2);
-                Debug.Log("__instance.innerRadius is: " + __instance.innerRadius);
-                Debug.Log("__instance.innerRadius2 is: " + __instance.innerRadius2);
-                Debug.Log("__instance.scale is: " + __instance.scale);
-                Debug.Log("__instance.scaleOverScaleDepth is: " + __instance.scaleOverScaleDepth);
-                Debug.Log("Done with Postfix for SetMaterial");
+                PQSMod_VertexHeightOblateAdvanced currentBodyOblateMod = Kopernicus.Utility.GetMod<PQSMod_VertexHeightOblateAdvanced>(planet.pqsController);
+                if (currentBodyOblateMod != null)
+                {
+                    MaterialPropertyBlock newmbp = new MaterialPropertyBlock();
+                    ___r.GetPropertyBlock(newmbp);
+                    Debug.Log("___r MaterialPropertyBlock contents are: " + newmbp.ToString());
+                    Debug.Log("___mpb MaterialPropertyBlock contents are: " + ___mpb.ToString());
+                    foreach (Material newMaterial in ___r.sharedMaterials)
+                    {
+                        Debug.Log("material " + newMaterial.name + " contents are: " + newMaterial.ToString());
+                    }
+                    AtmosphereFromGroundCache baseBodyCache;
+                    if (baseBodyCaches.TryGetValue(planet.name, out baseBodyCache) == false)
+                    {
+                        baseBodyCache = new AtmosphereFromGroundCache();
+                        baseBodyCaches.Add(planet.name, baseBodyCache);
+                    }
+                    foreach (FieldInfo field in typeof(AtmosphereFromGroundCache).GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+                    {
+                        //Debug.Log(field.Name + "is: " + field.GetValue(baseBodyCache));
+                        typeof(AtmosphereFromGround).GetField(field.Name).SetValue(__instance, field.GetValue(baseBodyCache));
+                    }
+                    /* __instance.outerRadius = baseBodyCache.outerRadius;
+                     __instance.outerRadius2 = baseBodyCache.outerRadius2;
+                     __instance.innerRadius = baseBodyCache.innerRadius;
+                     __instance.innerRadius2 = baseBodyCache.innerRadius2;
+                     __instance.scale = baseBodyCache.scale;
+                     __instance.scaleOverScaleDepth = baseBodyCache.scaleOverScaleDepth;*/
+                    //Debug.Log("Done with Postfix for SetMaterial");
+                }
             }
         }
     }

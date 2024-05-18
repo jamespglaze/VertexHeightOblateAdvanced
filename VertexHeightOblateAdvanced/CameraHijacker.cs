@@ -59,7 +59,7 @@ namespace VertexHeightOblateAdvanced
                     Vector3 normalVectorLerped;
                     Vector3 normalVectorSpherical = (Vector3)FlightGlobals.getUpAxis(currentMainBody, (Vector3d)activeVessel.ReferenceTransform.position);
 
-                    double maximumRadius = currentMainBodyOblateMod.GetMaxDeformity(currentMainBody.Radius);
+                    double maximumRadius = currentMainBody.Radius * currentMainBodyOblateMod.GetMaxDeformity();
                     double vesselRadius = activeVessel.altitude + currentMainBody.Radius;
                     double endLerpRadius = Math.Min(DuckMathUtils.GetSynchronousAltitude(currentMainBody.Radius, currentMainBody.angularV, currentMainBody.GeeASL * PhysicsGlobals.GravitationalAcceleration), maximumRadius + (currentMainBody.Radius / 10.0f));
                     double frameLerp = endLerpRadius > maximumRadius ? (vesselRadius - maximumRadius) / (endLerpRadius - maximumRadius) : 1;
@@ -153,7 +153,7 @@ namespace VertexHeightOblateAdvanced
                     Vector3d pointGeeForce = bodyRelativePos * -mainBody.gMagnitudeAtCenter / (bodyRelativePos.sqrMagnitude * Math.Sqrt(bodyRelativePos.sqrMagnitude));
                     Vector3d primaryPos = mainBody.bodyTransform.transform.TransformVector(new Vector3d(0, 0, mainBody.Radius * mainBodyOblateMod.primaryRadius));
                     Vector3d secondaryPos = mainBody.bodyTransform.transform.TransformVector(new Vector3d(0, 0, -mainBody.Radius * mainBodyOblateMod.secondaryRadius));
-                    double maximumRadius = mainBodyOblateMod.GetMaxDeformity(mainBody.Radius);
+                    double maximumRadius = mainBody.Radius * mainBodyOblateMod.GetMaxDeformity();
                     double endLerpRadius = maximumRadius + (mainBody.Radius / 10.0f);
                     double frameLerp = endLerpRadius > maximumRadius ? (bodyRelativePos.magnitude - maximumRadius) / (endLerpRadius - maximumRadius) : 1;
                     if (frameLerp >= 1)

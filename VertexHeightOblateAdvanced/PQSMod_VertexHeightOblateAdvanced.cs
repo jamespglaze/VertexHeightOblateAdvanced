@@ -50,6 +50,8 @@ namespace VertexHeightOblateAdvanced
 
         private void PrecalculateValues()
         {
+            // Inherit radius from parent PQS
+            radius = sphere.radius;
             switch (oblateMode)
             {
                 case OblateModes.CustomEllipsoid:
@@ -62,16 +64,14 @@ namespace VertexHeightOblateAdvanced
                     break;
             }
 
-            //Short circuit if not enough values provided in config
-            if ((radius <= 0.0f ? 1 : 0) + (mass <= 0.0f ? 1 : 0) + (geeASL <= 0.0f ? 1 : 0) > 1 || period <= 0.0f)
+            // Short circuit if not enough values provided in config
+            if ((mass <= 0.0f && geeASL <= 0.0f) || period <= 0.0f)
             {
                 return;
             }
 
             // Set mass if geeASL and radius given
             mass = mass == 0.0f ? Math.Pow(radius, 2) * geeASL * PhysicsGlobals.GravitationalAcceleration / DuckMathUtils.G : mass;
-            // Set radius if mass and geeASL given
-            radius = radius == 0.0f ? Math.Sqrt(DuckMathUtils.G * mass * geeASL * PhysicsGlobals.GravitationalAcceleration) : radius;
 
             switch (oblateMode)
             {
@@ -93,7 +93,7 @@ namespace VertexHeightOblateAdvanced
             (a, b, c, aSqr, bSqr, cSqr) = DuckMathUtils.PrecalculateConstantsEllipsoid(a, b, c);
         }
 
-        public double GetDeformity(double vertHeight, double u, double v)
+        public double GetDeformity(double u, double v)
         {
             double phi = 2 * Math.PI * u;
             double theta = Math.PI * v;
@@ -101,16 +101,16 @@ namespace VertexHeightOblateAdvanced
             switch (oblateMode)
             {
                 case OblateModes.PointEquipotential:
-                    return vertHeight * DuckMathUtils.CalculateDeformityPointEquipotential(theta, criticality);
+                    return DuckMathUtils.CalculateDeformityPointEquipotential(theta, criticality);
                 case OblateModes.Blend:
-                    return vertHeight * DuckMathUtils.CalculateDeformityPointEquipotential(theta, criticality) * DuckMathUtils.CalculateDeformityEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+                    return DuckMathUtils.CalculateDeformityPointEquipotential(theta, criticality) * DuckMathUtils.CalculateDeformityEllipsoid(phi, theta, aSqr, bSqr, cSqr);
                 case OblateModes.UniformEquipotential:
                 case OblateModes.CustomEllipsoid:
-                    return vertHeight * DuckMathUtils.CalculateDeformityEllipsoid(phi, theta, aSqr, bSqr, cSqr);
+                    return DuckMathUtils.CalculateDeformityEllipsoid(phi, theta, aSqr, bSqr, cSqr);
                 case OblateModes.ContactBinary:
-                    return vertHeight * DuckMathUtils.CalculateDeformityContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
+                    return DuckMathUtils.CalculateDeformityContactBinary(phi, theta, primaryRadius, secondaryRadius, primarySlope, secondarySlope, primarySlopeXLimit, secondarySlopeXLimit);
                 default:
-                    return vertHeight;
+                    return 1;
             }
         }
 
@@ -134,25 +134,25 @@ namespace VertexHeightOblateAdvanced
             }
         }
 
-        public double GetMaxDeformity(double vertHeight)
+        public double GetMaxDeformity()
         {
             if (secondaryRadius < primaryRadius)
             {
-                return GetDeformity(vertHeight, 0.0f, 0.5f);
+                return GetDeformity(0.0f, 0.5f);
             }
             if (primaryRadius < secondaryRadius)
             {
-                return GetDeformity(vertHeight, 0.5f, 0.5f);
+                return GetDeformity(0.5f, 0.5f);
             }
             if (a < c && b < c)
             {
-                return GetDeformity(vertHeight, 0.0f, 0.0f);
+                return GetDeformity(0.0f, 0.0f);
             }
             if(a < b && c < b)
             {
-                return GetDeformity(vertHeight, 0.25f, 0.5f);
+                return GetDeformity(0.25f, 0.5f);
             }
-            return GetDeformity(vertHeight, 0.0f, 0.5f);
+            return GetDeformity(0.0f, 0.5f);
         }
 
         public override void OnSetup()
@@ -164,7 +164,7 @@ namespace VertexHeightOblateAdvanced
         public override void OnVertexBuildHeight(PQS.VertexBuildData data)
         {
             //Apply height
-            data.vertHeight = GetDeformity(data.vertHeight, data.u, data.v);
+            data.vertHeight += radius * (GetDeformity(data.u, data.v) - 1);
         }
     }
 }

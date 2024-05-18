@@ -45,14 +45,6 @@ namespace VertexHeightOblateAdvanced
             set { Mod.mass = value; }
         }
 
-        // Reference radius of the body
-        [ParserTarget("radius")]
-        public NumericParser<double> Radius
-        {
-            get { return Mod.radius; }
-            set { Mod.radius = value; }
-        }
-
         // Reference surface gravity of the body
         [ParserTarget("geeASL")]
         public NumericParser<double> GeeASL
